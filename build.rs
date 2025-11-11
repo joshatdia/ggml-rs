@@ -195,6 +195,27 @@ fn main() {
 
     let destination = config.build();
 
+    // Explicitly run CMake install to ensure libraries are installed
+    // The build() function should run install automatically, but we'll verify
+    use std::process::Command;
+    let cmake_build_dir = destination.join("build");
+    if cmake_build_dir.exists() {
+        let install_status = Command::new("cmake")
+            .arg("--build")
+            .arg(&cmake_build_dir)
+            .arg("--target")
+            .arg("install")
+            .arg("--config")
+            .arg("Release")
+            .status();
+        
+        if let Ok(status) = install_status {
+            if !status.success() {
+                eprintln!("cargo:warning=CMake install step failed, but continuing...");
+            }
+        }
+    }
+
     // Export the library path for CMake to find
     let lib_dir = destination.join("lib");
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
@@ -233,7 +254,7 @@ fn main() {
         // On Windows, we need the .lib import library file for linking
         let cuda_lib_name = "ggml-cuda";
         
-        // Check if the library file exists
+        // Check if the library file exists in install directory
         // On Windows, we need the .lib file (import library) for linking
         // On Unix, we need the .so/.dylib file
         let cuda_lib_file = if cfg!(target_os = "windows") {
@@ -244,13 +265,68 @@ fn main() {
             lib_dir.join(format!("lib{}.so", cuda_lib_name))
         };
         
-        // Only link if the library exists
+        // Also check build directory (library might be built but not installed)
+        let build_lib_file = if cfg!(target_os = "windows") {
+            destination.join("build").join("src").join("Release").join(format!("{}.lib", cuda_lib_name))
+        } else if cfg!(target_os = "macos") {
+            destination.join("build").join("src").join(format!("lib{}.dylib", cuda_lib_name))
+        } else {
+            destination.join("build").join("src").join(format!("lib{}.so", cuda_lib_name))
+        };
+        
+        // Debug: Show what we're looking for
+        eprintln!("cargo:warning=[CUDA] Looking for CUDA library at: {}", cuda_lib_file.display());
+        eprintln!("cargo:warning=[CUDA] Library directory: {}", lib_dir.display());
+        eprintln!("cargo:warning=[CUDA] Library directory exists: {}", lib_dir.exists());
+        
+        // Also check for .dll file (on Windows)
+        if cfg!(target_os = "windows") {
+            let cuda_dll_file = lib_dir.join(format!("{}.dll", cuda_lib_name));
+            eprintln!("cargo:warning=[CUDA] Looking for CUDA DLL at: {}", cuda_dll_file.display());
+            eprintln!("cargo:warning=[CUDA] CUDA DLL exists: {}", cuda_dll_file.exists());
+        }
+        
+        // List all files in lib_dir for debugging
+        if lib_dir.exists() {
+            eprintln!("cargo:warning=[CUDA] Files in lib_dir:");
+            if let Ok(entries) = std::fs::read_dir(&lib_dir) {
+                for entry in entries.flatten() {
+                    let file_name = entry.file_name();
+                    let metadata = entry.metadata().ok();
+                    let size = metadata.as_ref().map(|m| m.len()).unwrap_or(0);
+                    eprintln!("cargo:warning=[CUDA]   - {} ({} bytes)", file_name.to_string_lossy(), size);
+                }
+            }
+        } else {
+            eprintln!("cargo:warning=[CUDA] ERROR: Library directory does not exist!");
+        }
+        
+        // Also check parent directory (in case libraries are in a subdirectory)
+        if let Some(parent) = lib_dir.parent() {
+            eprintln!("cargo:warning=[CUDA] Checking parent directory: {}", parent.display());
+            if let Ok(entries) = std::fs::read_dir(parent) {
+                for entry in entries.flatten() {
+                    let file_name = entry.file_name();
+                    if file_name.to_string_lossy().contains("cuda") {
+                        eprintln!("cargo:warning=[CUDA]   Found CUDA-related file in parent: {}", file_name.to_string_lossy());
+                    }
+                }
+            }
+        }
+        
+        // Only link if the library exists (check both install and build directories)
         if cuda_lib_file.exists() {
             println!("cargo:rustc-link-lib=dylib={}", cuda_lib_name);
+            eprintln!("cargo:warning=[CUDA] Successfully linking to ggml-cuda (found in install directory)");
+        } else if build_lib_file.exists() {
+            // Library exists in build directory but not installed - add build directory to link search
+            println!("cargo:rustc-link-search=native={}", build_lib_file.parent().unwrap().display());
+            println!("cargo:rustc-link-lib=dylib={}", cuda_lib_name);
+            eprintln!("cargo:warning=[CUDA] Successfully linking to ggml-cuda (found in build directory)");
         } else {
             // If library doesn't exist, warn but don't fail
             // This can happen if CUDA wasn't properly configured during build
-            eprintln!("cargo:warning=ggml-cuda library not found at {}, skipping link. Make sure CUDA is properly configured and GGML_CUDA=ON was set during CMake build.", cuda_lib_file.display());
+            eprintln!("cargo:warning=[CUDA] ERROR: ggml-cuda library not found at {} or {}, skipping link. Make sure CUDA is properly configured and GGML_CUDA=ON was set during CMake build.", cuda_lib_file.display(), build_lib_file.display());
         }
     }
 

@@ -194,8 +194,11 @@ fn main() {
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     
     // Export library path as environment variable for CMake find_package
-    println!("cargo:GGML_LIB_DIR={}", lib_dir.display());
-    println!("cargo:GGML_INCLUDE_DIR={}", ggml_root.join("include").display());
+    // Cargo automatically creates DEP_GGML_RS_ROOT for crate "ggml-rs"
+    // Exporting GGML_RS_INCLUDE creates DEP_GGML_RS_GGML_RS_INCLUDE
+    // (Exporting INCLUDE would create DEP_GGML_RS_INCLUDE)
+    println!("cargo:GGML_RS_LIB_DIR={}", lib_dir.display());
+    println!("cargo:GGML_RS_INCLUDE={}", ggml_root.join("include").display());
     
     // Link to shared libraries (not static)
     println!("cargo:rustc-link-lib=dylib=ggml");

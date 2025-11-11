@@ -105,16 +105,65 @@ This means the `ggml-rs` build script didn't run successfully. Check:
 
 3. **Is it a docs.rs build?** The build script exports variables even on docs.rs, but doesn't build the library.
 
+## Enabling Features
+
+### CUDA Support
+
+To enable CUDA support, you **must** explicitly enable the `cuda` feature on `ggml-rs`:
+
+```toml
+[dependencies]
+ggml-rs = { path = "../ggml-rs", features = ["cuda"] }
+```
+
+Or if your crate has a `cuda` feature, propagate it:
+
+```toml
+[features]
+cuda = ["ggml-rs/cuda"]  # Enable cuda on ggml-rs when parent's cuda is enabled
+
+[dependencies]
+ggml-rs = { path = "../ggml-rs" }
+```
+
+**Important:** Just building your crate with `--features cuda` does NOT automatically enable CUDA on `ggml-rs`. You must explicitly enable it in `Cargo.toml`.
+
+### Other Features
+
+The same applies to other features:
+- `metal` - Metal support (macOS)
+- `vulkan` - Vulkan support
+- `openblas` - OpenBLAS support
+- `hipblas` - HIP/ROCm support
+- `intel-sycl` - Intel SYCL support
+
+Example:
+```toml
+[dependencies]
+ggml-rs = { path = "../ggml-rs", features = ["cuda", "vulkan"] }
+```
+
+## Runtime Library Copying
+
+On Windows, `ggml-rs` automatically copies DLLs to the target directory (`target/debug/` or `target/release/`) so they're available at runtime. This includes:
+- `ggml.dll`, `ggml-base.dll`, `ggml-cpu.dll` (always)
+- `ggml-cuda.dll` (if `cuda` feature is enabled)
+- `ggml-vulkan.dll` (if `vulkan` feature is enabled)
+- Other backend DLLs based on enabled features
+
+On Unix systems (macOS/Linux), shared libraries (`.dylib`/`.so`) are also copied for consistency.
+
 ## Example: Using with llama-cpp-sys-2
 
 In your `llama-cpp-sys-2/Cargo.toml`:
 
 ```toml
 [dependencies]
-ggml-rs = { path = "../ggml-rs" }  # or git = "..."
+ggml-rs = { path = "../ggml-rs", features = ["cuda"] }  # Enable CUDA if needed
 
 [features]
 use-shared-ggml = []
+cuda = ["ggml-rs/cuda"]  # Propagate cuda feature to ggml-rs
 ```
 
 In your `llama-cpp-sys-2/build.rs`:
@@ -134,6 +183,9 @@ fn main() {
         
         // Configure CMake to use shared GGML
         // ... your CMake configuration ...
+        
+        // Note: You do NOT need to link to ggml-cuda here
+        // ggml-rs already handles linking when the cuda feature is enabled
     }
 }
 ```

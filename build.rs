@@ -354,6 +354,124 @@ fn main() {
     if cfg!(feature = "intel-sycl") {
         println!("cargo:rustc-link-lib=dylib=ggml-sycl");
     }
+
+    // Copy DLLs/shared libraries to target directory for runtime
+    // On Windows, DLLs must be in the same directory as the executable
+    // On Unix, we can use rpath, but copying ensures they're available
+    copy_runtime_libraries(&destination, &lib_dir);
+}
+
+fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
+    use std::fs;
+    
+    // Get the target directory (where the executable will be)
+    // OUT_DIR is like: target/debug/build/ggml-rs-xxx/out
+    // We need: target/debug/ or target/release/
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let target_dir = out_dir
+        .parent().unwrap()  // out/
+        .parent().unwrap()  // build/
+        .parent().unwrap()  // target/
+        .join(env::var("PROFILE").unwrap_or_else(|_| "debug".to_string()));
+    
+    // Create target directory if it doesn't exist
+    if let Err(e) = fs::create_dir_all(&target_dir) {
+        eprintln!("cargo:warning=Failed to create target directory {}: {}", target_dir.display(), e);
+        return;
+    }
+    
+    // Determine library extension based on platform
+    let lib_ext = if cfg!(target_os = "windows") {
+        "dll"
+    } else if cfg!(target_os = "macos") {
+        "dylib"
+    } else {
+        "so"
+    };
+    
+    // List of libraries to copy
+    let libraries = vec![
+        "ggml",
+        "ggml-base",
+        "ggml-cpu",
+    ];
+    
+    // Add optional libraries based on features
+    let mut optional_libs = Vec::new();
+    if cfg!(feature = "cuda") {
+        optional_libs.push("ggml-cuda");
+    }
+    if cfg!(feature = "vulkan") {
+        optional_libs.push("ggml-vulkan");
+    }
+    if cfg!(feature = "hipblas") {
+        optional_libs.push("ggml-hip");
+    }
+    if cfg!(feature = "metal") {
+        optional_libs.push("ggml-metal");
+    }
+    if cfg!(feature = "openblas") || cfg!(target_os = "macos") {
+        optional_libs.push("ggml-blas");
+    }
+    if cfg!(feature = "intel-sycl") {
+        optional_libs.push("ggml-sycl");
+    }
+    
+    // Copy libraries from install directory
+    for lib_name in libraries.iter().chain(optional_libs.iter()) {
+        let lib_file = if cfg!(target_os = "windows") {
+            lib_dir.join(format!("{}.{}", lib_name, lib_ext))
+        } else if cfg!(target_os = "macos") {
+            lib_dir.join(format!("lib{}.{}", lib_name, lib_ext))
+        } else {
+            lib_dir.join(format!("lib{}.{}", lib_name, lib_ext))
+        };
+        
+        if lib_file.exists() {
+            let target_file = target_dir.join(lib_file.file_name().unwrap());
+            if let Err(e) = fs::copy(&lib_file, &target_file) {
+                eprintln!("cargo:warning=Failed to copy {} to {}: {}", lib_file.display(), target_file.display(), e);
+            } else {
+                println!("[COPY] Copied {} to {}", lib_file.display(), target_file.display());
+            }
+        } else {
+            // Also check build directory (library might be built but not installed)
+            let build_lib_file = if cfg!(target_os = "windows") {
+                destination.join("build").join("src").join("Release").join(format!("{}.{}", lib_name, lib_ext))
+            } else if cfg!(target_os = "macos") {
+                destination.join("build").join("src").join(format!("lib{}.{}", lib_name, lib_ext))
+            } else {
+                destination.join("build").join("src").join(format!("lib{}.{}", lib_name, lib_ext))
+            };
+            
+            if build_lib_file.exists() {
+                let target_file = target_dir.join(build_lib_file.file_name().unwrap());
+                if let Err(e) = fs::copy(&build_lib_file, &target_file) {
+                    eprintln!("cargo:warning=Failed to copy {} to {}: {}", build_lib_file.display(), target_file.display(), e);
+                } else {
+                    println!("[COPY] Copied {} to {}", build_lib_file.display(), target_file.display());
+                }
+            }
+        }
+    }
+    
+    // Also check bin directory on Windows (DLLs might be installed there)
+    if cfg!(target_os = "windows") {
+        let bin_dir = destination.join("bin");
+        if bin_dir.exists() {
+            for lib_name in libraries.iter().chain(optional_libs.iter()) {
+                let dll_file = bin_dir.join(format!("{}.dll", lib_name));
+                if dll_file.exists() {
+                    let target_file = target_dir.join(dll_file.file_name().unwrap());
+                    if let Err(e) = fs::copy(&dll_file, &target_file) {
+                        eprintln!("cargo:warning=Failed to copy {} to {}: {}", dll_file.display(), target_file.display(), e);
+                    } else {
+                        println!("[COPY] Copied {} to {}", dll_file.display(), target_file.display());
+                    }
+                }
+            }
+        }
+    }
 }
 
 // From https://github.com/alexcrichton/cc-rs/blob/fba7feded71ee4f63cfe885673ead6d7b4f2f454/src/lib.rs#L2462

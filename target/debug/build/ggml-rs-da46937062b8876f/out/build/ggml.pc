@@ -1,0 +1,11 @@
+prefix=C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-da46937062b8876f/out
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: ggml
+Description: GGML library
+Version: 
+Libs: -L${libdir} -lggml
+Cflags: -I${includedir}
+

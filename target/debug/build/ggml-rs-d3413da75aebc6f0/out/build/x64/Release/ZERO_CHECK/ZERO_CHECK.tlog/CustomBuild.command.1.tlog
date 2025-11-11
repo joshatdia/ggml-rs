@@ -1,0 +1,10 @@
+^C:\USERS\JOSHUAGOODMAN\DOCUMENTS\GITHUB\GGML-RS\TARGET\DEBUG\BUILD\GGML-RS-D3413DA75AEBC6F0\OUT\BUILD\CMAKEFILES\72B1C6EDFBB1C71482C6F1F75EB72006\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/ggml -BC:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-d3413da75aebc6f0/out/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-d3413da75aebc6f0/out/build/ggml.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

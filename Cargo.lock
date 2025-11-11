@@ -110,11 +110,12 @@ dependencies = [
 
 [[package]]
 name = "ggml-rs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bindgen",
  "cc",
  "cmake",
+ "regex-automata",
 ]
 
 [[package]]

@@ -1,0 +1,10 @@
+^C:\USERS\JOSHUAGOODMAN\DOCUMENTS\GITHUB\GGML-RS\TARGET\DEBUG\BUILD\GGML-RS-D3413DA75AEBC6F0\OUT\BUILD\CMAKEFILES\72B1C6EDFBB1C71482C6F1F75EB72006\INSTALL_FORCE.RULE
+setlocal
+cd .
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

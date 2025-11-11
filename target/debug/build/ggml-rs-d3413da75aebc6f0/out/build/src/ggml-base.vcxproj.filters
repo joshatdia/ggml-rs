@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-alloc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-backend.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-opt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-threading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-quants.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\gguf.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\include\ggml.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\include\ggml-alloc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\include\ggml-backend.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\include\ggml-cpp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\include\ggml-opt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\include\gguf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-threading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-quants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{E96C3037-D9DD-36B7-BC6B-699D4486CFFE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{04C51D60-6350-36BC-8CF4-4FFA7CB5492A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

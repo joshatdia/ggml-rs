@@ -229,7 +229,29 @@ fn main() {
     }
 
     if cfg!(feature = "cuda") {
-        println!("cargo:rustc-link-lib=dylib=ggml-cuda");
+        // Check if ggml-cuda library exists before linking
+        // On Windows, we need the .lib import library file for linking
+        let cuda_lib_name = "ggml-cuda";
+        
+        // Check if the library file exists
+        // On Windows, we need the .lib file (import library) for linking
+        // On Unix, we need the .so/.dylib file
+        let cuda_lib_file = if cfg!(target_os = "windows") {
+            lib_dir.join(format!("{}.lib", cuda_lib_name))
+        } else if cfg!(target_os = "macos") {
+            lib_dir.join(format!("lib{}.dylib", cuda_lib_name))
+        } else {
+            lib_dir.join(format!("lib{}.so", cuda_lib_name))
+        };
+        
+        // Only link if the library exists
+        if cuda_lib_file.exists() {
+            println!("cargo:rustc-link-lib=dylib={}", cuda_lib_name);
+        } else {
+            // If library doesn't exist, warn but don't fail
+            // This can happen if CUDA wasn't properly configured during build
+            eprintln!("cargo:warning=ggml-cuda library not found at {}, skipping link. Make sure CUDA is properly configured and GGML_CUDA=ON was set during CMake build.", cuda_lib_file.display());
+        }
     }
 
     if cfg!(feature = "openblas") {

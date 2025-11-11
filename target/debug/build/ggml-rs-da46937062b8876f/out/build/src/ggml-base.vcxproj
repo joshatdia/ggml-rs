@@ -102,11 +102,11 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <UseFullPaths>false</UseFullPaths>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);GGML_BUILD;GGML_SHARED;GGML_VERSION="0.9.4-dirty";GGML_COMMIT="a7cca81";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="Debug";ggml_base_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);GGML_BUILD;GGML_SHARED;GGML_VERSION="0.9.4";GGML_COMMIT="81e5be4";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="Debug";ggml_base_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION=\"0.9.4-dirty\";GGML_COMMIT=\"a7cca81\";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"Debug\";ggml_base_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION=\"0.9.4\";GGML_COMMIT=\"81e5be4\";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"Debug\";ggml_base_EXPORTS</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\.;C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
@@ -145,13 +145,13 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <UseFullPaths>false</UseFullPaths>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);GGML_BUILD;GGML_SHARED;GGML_VERSION="0.9.4-dirty";GGML_COMMIT="a7cca81";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="Release";ggml_base_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);GGML_BUILD;GGML_SHARED;GGML_VERSION="0.9.4";GGML_COMMIT="81e5be4";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="Release";ggml_base_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <DebugInformationFormat>
       </DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;GGML_BUILD;GGML_SHARED;GGML_VERSION=\"0.9.4-dirty\";GGML_COMMIT=\"a7cca81\";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"Release\";ggml_base_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;GGML_BUILD;GGML_SHARED;GGML_VERSION=\"0.9.4\";GGML_COMMIT=\"81e5be4\";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"Release\";ggml_base_EXPORTS</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\.;C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
@@ -192,13 +192,13 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <UseFullPaths>false</UseFullPaths>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);NDEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION="0.9.4-dirty";GGML_COMMIT="a7cca81";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="MinSizeRel";ggml_base_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NDEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION="0.9.4";GGML_COMMIT="81e5be4";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="MinSizeRel";ggml_base_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <DebugInformationFormat>
       </DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NDEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION=\"0.9.4-dirty\";GGML_COMMIT=\"a7cca81\";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"MinSizeRel\";ggml_base_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NDEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION=\"0.9.4\";GGML_COMMIT=\"81e5be4\";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"MinSizeRel\";ggml_base_EXPORTS</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\.;C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
@@ -240,11 +240,11 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <UseFullPaths>false</UseFullPaths>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);NDEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION="0.9.4-dirty";GGML_COMMIT="a7cca81";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="RelWithDebInfo";ggml_base_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);NDEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION="0.9.4";GGML_COMMIT="81e5be4";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="RelWithDebInfo";ggml_base_EXPORTS</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)</ObjectFileName>
     </ClCompile>
     <ResourceCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NDEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION=\"0.9.4-dirty\";GGML_COMMIT=\"a7cca81\";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"RelWithDebInfo\";ggml_base_EXPORTS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;NDEBUG;GGML_BUILD;GGML_SHARED;GGML_VERSION=\"0.9.4\";GGML_COMMIT=\"81e5be4\";GGML_SCHED_MAX_COPIES=4;_XOPEN_SOURCE=600;_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"RelWithDebInfo\";ggml_base_EXPORTS</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\.;C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>

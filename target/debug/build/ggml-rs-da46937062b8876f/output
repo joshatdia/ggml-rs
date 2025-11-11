@@ -59,9 +59,9 @@ Running with debug output on.
 -- Adding CPU backend variant ggml-cpu: /arch:AVX512 GGML_AVX512
    Called from: [2]	C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/ggml/src/ggml-cpu/CMakeLists.txt
                 [1]	C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/ggml/src/CMakeLists.txt
--- ggml version: 0.9.4-dirty
+-- ggml version: 0.9.4
    Called from: [1]	C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/ggml/CMakeLists.txt
--- ggml commit:  a7cca81
+-- ggml commit:  81e5be4
    Called from: [1]	C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/ggml/CMakeLists.txt
 -- Configuring done
 -- Generating C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-da46937062b8876f/out/build
@@ -74,18 +74,17 @@ Running with debug output on.
 -- Build files have been written to: C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-da46937062b8876f/out/build
 running: "cmake" "--build" "C:\\Users\\JoshuaGoodman\\Documents\\GitHub\\ggml-rs\\target\\debug\\build\\ggml-rs-da46937062b8876f\\out\\build" "--target" "install" "--config" "Release" "--parallel" "24"
 MSBuild version 17.14.19+164abd434 for .NET Framework
-Build started 11/11/2025 12:46:36 PM.
+Build started 11/11/2025 1:20:25 PM.
 
      1>Project "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\build\install.vcxproj" on node 1 (default targets).
      1>Project "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\build\install.vcxproj" (1) is building "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\build\ZERO_CHECK.vcxproj" (2) on node 1 (default targets).
      2>PrepareForBuild:
-         Creating directory "x64\Release\ZERO_CHECK\".
          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-         Creating directory "x64\Release\ZERO_CHECK\ZERO_CHECK.tlog\".
        InitializeBuildStatus:
          Creating "x64\Release\ZERO_CHECK\ZERO_CHECK.tlog\unsuccessfulbuild" because "AlwaysCreate" was specified.
          Touching "x64\Release\ZERO_CHECK\ZERO_CHECK.tlog\unsuccessfulbuild".
        CustomBuild:
+         All outputs are up-to-date.
          Checking Build System
        FinalizeBuildStatus:
          Deleting file "x64\Release\ZERO_CHECK\ZERO_CHECK.tlog\unsuccessfulbuild".
@@ -94,25 +93,16 @@ Build started 11/11/2025 12:46:36 PM.
      1>Project "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\build\install.vcxproj" (1) is building "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\build\ALL_BUILD.vcxproj" (3) on node 2 (default targets).
      3>Project "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\build\ALL_BUILD.vcxproj" (3) is building "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\build\src\ggml-base.vcxproj" (4) on node 1 (default targets).
      4>PrepareForBuild:
-         Creating directory "ggml-base.dir\Release\".
          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-         Creating directory "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\build\bin\Release\".
-         Creating directory "ggml-base.dir\Release\ggml-base.tlog\".
        InitializeBuildStatus:
-         Creating "ggml-base.dir\Release\ggml-base.tlog\unsuccessfulbuild" because "AlwaysCreate" was specified.
          Touching "ggml-base.dir\Release\ggml-base.tlog\unsuccessfulbuild".
        CustomBuild:
-         Building Custom Rule C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/ggml/src/CMakeLists.txt
+         All outputs are up-to-date.
        ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\HostX64\x64\CL.exe /c /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\." /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\..\include" /nologo /W1 /WX- /diagnostics:column /O2 /D _WINDLL /D _MBCS /D GGML_BUILD /D GGML_SHARED /D "GGML_VERSION=\"0.9.4-dirty\"" /D "GGML_COMMIT=\"a7cca81\"" /D GGML_SCHED_MAX_COPIES=4 /D _XOPEN_SOURCE=600 /D _CRT_SECURE_NO_WARNINGS /D "CMAKE_INTDIR=\"Release\"" /D ggml_base_EXPORTS /Gm- /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c11 /Fo"ggml-base.dir\Release\/ggml.c.obj" /Fd"ggml-base.dir\Release\vc143.pdb" /external:W1 /Gd /TC /wd4005 /wd4244 /wd4267 /wd4305 /wd4566 /wd4996 /wd4702 /errorReport:queue  /utf-8 -Brepro /utf-8 -Brepro "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml.c"
-         ggml.c
-         C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\HostX64\x64\CL.exe /c /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\." /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\..\include" /nologo /W1 /WX- /diagnostics:column /O2 /D _WINDLL /D _MBCS /D GGML_BUILD /D GGML_SHARED /D "GGML_VERSION=\"0.9.4-dirty\"" /D "GGML_COMMIT=\"a7cca81\"" /D GGML_SCHED_MAX_COPIES=4 /D _XOPEN_SOURCE=600 /D _CRT_SECURE_NO_WARNINGS /D "CMAKE_INTDIR=\"Release\"" /D ggml_base_EXPORTS /Gm- /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /Fo"ggml-base.dir\Release\/ggml.cpp.obj" /Fd"ggml-base.dir\Release\vc143.pdb" /external:W1 /Gd /TP /wd4005 /wd4244 /wd4267 /wd4305 /wd4566 /wd4996 /wd4702 /errorReport:queue  /utf-8 -Brepro /utf-8 -Brepro "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml.cpp"
-         ggml.cpp
-         C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\HostX64\x64\CL.exe /c /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\." /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\..\include" /nologo /W1 /WX- /diagnostics:column /O2 /D _WINDLL /D _MBCS /D GGML_BUILD /D GGML_SHARED /D "GGML_VERSION=\"0.9.4-dirty\"" /D "GGML_COMMIT=\"a7cca81\"" /D GGML_SCHED_MAX_COPIES=4 /D _XOPEN_SOURCE=600 /D _CRT_SECURE_NO_WARNINGS /D "CMAKE_INTDIR=\"Release\"" /D ggml_base_EXPORTS /Gm- /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c11 /Fo"ggml-base.dir\Release\\" /Fd"ggml-base.dir\Release\vc143.pdb" /external:W1 /Gd /TC /wd4005 /wd4244 /wd4267 /wd4305 /wd4566 /wd4996 /wd4702 /errorReport:queue  /utf-8 -Brepro /utf-8 -Brepro "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-alloc.c" "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-quants.c"
-         ggml-alloc.c
-         ggml-quants.c
-         Generating Code...
-         C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\HostX64\x64\CL.exe /c /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\." /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\..\include" /nologo /W1 /WX- /diagnostics:column /O2 /D _WINDLL /D _MBCS /D GGML_BUILD /D GGML_SHARED /D "GGML_VERSION=\"0.9.4-dirty\"" /D "GGML_COMMIT=\"a7cca81\"" /D GGML_SCHED_MAX_COPIES=4 /D _XOPEN_SOURCE=600 /D _CRT_SECURE_NO_WARNINGS /D "CMAKE_INTDIR=\"Release\"" /D ggml_base_EXPORTS /Gm- /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /Fo"ggml-base.dir\Release\\" /Fd"ggml-base.dir\Release\vc143.pdb" /external:W1 /Gd /TP /wd4005 /wd4244 /wd4267 /wd4305 /wd4566 /wd4996 /wd4702 /errorReport:queue  /utf-8 -Brepro /utf-8 -Brepro "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-backend.cpp" "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-opt.cpp" "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-threading.cpp" "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\gguf.cpp"
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\HostX64\x64\CL.exe /c /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\." /I"C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\..\include" /nologo /W1 /WX- /diagnostics:column /O2 /D _WINDLL /D _MBCS /D GGML_BUILD /D GGML_SHARED /D "GGML_VERSION=\"0.9.4\"" /D "GGML_COMMIT=\"81e5be4\"" /D GGML_SCHED_MAX_COPIES=4 /D _XOPEN_SOURCE=600 /D _CRT_SECURE_NO_WARNINGS /D "CMAKE_INTDIR=\"Release\"" /D ggml_base_EXPORTS /Gm- /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /std:c++17 /Fo"ggml-base.dir\Release\\" /Fd"ggml-base.dir\Release\vc143.pdb" /external:W1 /Gd /TP /wd4005 /wd4244 /wd4267 /wd4305 /wd4566 /wd4996 /wd4702 /errorReport:queue  /utf-8 -Brepro /utf-8 -Brepro "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-backend.cpp" "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-opt.cpp" "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\ggml-threading.cpp" "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\ggml\src\gguf.cpp"
          ggml-backend.cpp
          ggml-opt.cpp
      4>C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\vector(1224,17): warning C4530: C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc [C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\build\src\ggml-base.vcxproj]
@@ -315,7 +305,7 @@ Build succeeded.
     3 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:11.29
+Time Elapsed 00:00:08.66
 cargo:root=C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out
 cargo:rustc-link-search=native=C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\lib
 cargo:LIB_DIR=C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-da46937062b8876f\out\lib

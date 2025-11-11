@@ -7,6 +7,15 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    // Verify features are enabled
+    println!("[BUILD] Starting ggml-rs build script");
+    println!("[BUILD] CUDA feature enabled: {}", cfg!(feature = "cuda"));
+    println!("[BUILD] Metal feature enabled: {}", cfg!(feature = "metal"));
+    println!("[BUILD] Vulkan feature enabled: {}", cfg!(feature = "vulkan"));
+    println!("[BUILD] OpenBLAS feature enabled: {}", cfg!(feature = "openblas"));
+    println!("[BUILD] HIPBLAS feature enabled: {}", cfg!(feature = "hipblas"));
+    println!("[BUILD] Intel-SYCL feature enabled: {}", cfg!(feature = "intel-sycl"));
+    
     let target = env::var("TARGET").unwrap();
     
     // Link C++ standard library
@@ -108,9 +117,13 @@ fn main() {
     }
 
     if cfg!(feature = "cuda") {
+        println!("[BUILD] Configuring CUDA support");
         config.define("GGML_CUDA", "ON");
         config.define("CMAKE_POSITION_INDEPENDENT_CODE", "ON");
         config.define("CMAKE_CUDA_FLAGS", "-Xcompiler=-fPIC");
+        println!("[BUILD] CUDA CMake flags set: GGML_CUDA=ON");
+    } else {
+        println!("[BUILD] CUDA feature NOT enabled - skipping CUDA build");
     }
 
     if cfg!(feature = "hipblas") {
@@ -193,27 +206,45 @@ fn main() {
         }
     }
 
+    println!("[BUILD] Starting CMake build...");
     let destination = config.build();
+    println!("[BUILD] CMake build completed. Output directory: {}", destination.display());
 
     // Explicitly run CMake install to ensure libraries are installed
     // The build() function should run install automatically, but we'll verify
     use std::process::Command;
     let cmake_build_dir = destination.join("build");
     if cmake_build_dir.exists() {
-        let install_status = Command::new("cmake")
+        println!("[BUILD] Running CMake install step...");
+        let install_output = Command::new("cmake")
             .arg("--build")
             .arg(&cmake_build_dir)
             .arg("--target")
             .arg("install")
             .arg("--config")
             .arg("Release")
-            .status();
+            .output();
         
-        if let Ok(status) = install_status {
-            if !status.success() {
-                eprintln!("cargo:warning=CMake install step failed, but continuing...");
+        match install_output {
+            Ok(output) => {
+                if output.status.success() {
+                    println!("[BUILD] CMake install step completed successfully");
+                } else {
+                    eprintln!("cargo:warning=CMake install step failed with exit code: {:?}", output.status.code());
+                    if !output.stdout.is_empty() {
+                        eprintln!("cargo:warning=CMake install stdout: {}", String::from_utf8_lossy(&output.stdout));
+                    }
+                    if !output.stderr.is_empty() {
+                        eprintln!("cargo:warning=CMake install stderr: {}", String::from_utf8_lossy(&output.stderr));
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("cargo:warning=Failed to run CMake install: {}", e);
             }
         }
+    } else {
+        println!("[BUILD] CMake build directory does not exist: {}", cmake_build_dir.display());
     }
 
     // Export the library path for CMake to find
@@ -364,6 +395,10 @@ fn main() {
 fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
     use std::fs;
     
+    println!("[COPY] Starting DLL copy process...");
+    println!("[COPY] Destination: {}", destination.display());
+    println!("[COPY] Library directory: {}", lib_dir.display());
+    
     // Get the target directory (where the executable will be)
     // OUT_DIR is like: target/debug/build/ggml-rs-xxx/out
     // We need: target/debug/ or target/release/
@@ -373,6 +408,8 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
         .parent().unwrap()  // build/
         .parent().unwrap()  // target/
         .join(env::var("PROFILE").unwrap_or_else(|_| "debug".to_string()));
+    
+    println!("[COPY] Target directory: {}", target_dir.display());
     
     // Create target directory if it doesn't exist
     if let Err(e) = fs::create_dir_all(&target_dir) {
@@ -418,7 +455,9 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
     }
     
     // Copy libraries from install directory
+    println!("[COPY] Libraries to copy: {:?}", libraries.iter().chain(optional_libs.iter()).collect::<Vec<_>>());
     for lib_name in libraries.iter().chain(optional_libs.iter()) {
+        println!("[COPY] Checking for library: {}", lib_name);
         let lib_file = if cfg!(target_os = "windows") {
             lib_dir.join(format!("{}.{}", lib_name, lib_ext))
         } else if cfg!(target_os = "macos") {
@@ -427,14 +466,16 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
             lib_dir.join(format!("lib{}.{}", lib_name, lib_ext))
         };
         
+        println!("[COPY]   Checking install directory: {}", lib_file.display());
         if lib_file.exists() {
             let target_file = target_dir.join(lib_file.file_name().unwrap());
             if let Err(e) = fs::copy(&lib_file, &target_file) {
                 eprintln!("cargo:warning=Failed to copy {} to {}: {}", lib_file.display(), target_file.display(), e);
             } else {
-                println!("[COPY] Copied {} to {}", lib_file.display(), target_file.display());
+                println!("[COPY] ✓ Copied {} to {}", lib_file.display(), target_file.display());
             }
         } else {
+            println!("[COPY]   Not found in install directory, checking build directory...");
             // Also check build directory (library might be built but not installed)
             let build_lib_file = if cfg!(target_os = "windows") {
                 destination.join("build").join("src").join("Release").join(format!("{}.{}", lib_name, lib_ext))
@@ -444,13 +485,16 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
                 destination.join("build").join("src").join(format!("lib{}.{}", lib_name, lib_ext))
             };
             
+            println!("[COPY]   Checking build directory: {}", build_lib_file.display());
             if build_lib_file.exists() {
                 let target_file = target_dir.join(build_lib_file.file_name().unwrap());
                 if let Err(e) = fs::copy(&build_lib_file, &target_file) {
                     eprintln!("cargo:warning=Failed to copy {} to {}: {}", build_lib_file.display(), target_file.display(), e);
                 } else {
-                    println!("[COPY] Copied {} to {}", build_lib_file.display(), target_file.display());
+                    println!("[COPY] ✓ Copied {} to {}", build_lib_file.display(), target_file.display());
                 }
+            } else {
+                println!("[COPY] ✗ Library {} not found in build directory either", lib_name);
             }
         }
     }
@@ -458,15 +502,80 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
     // Also check bin directory on Windows (DLLs might be installed there)
     if cfg!(target_os = "windows") {
         let bin_dir = destination.join("bin");
+        println!("[COPY] Checking bin directory: {}", bin_dir.display());
         if bin_dir.exists() {
+            println!("[COPY] Bin directory exists, checking for DLLs...");
+            if let Ok(entries) = fs::read_dir(&bin_dir) {
+                for entry in entries.flatten() {
+                    let file_name = entry.file_name();
+                    println!("[COPY]   Found in bin: {}", file_name.to_string_lossy());
+                }
+            }
             for lib_name in libraries.iter().chain(optional_libs.iter()) {
                 let dll_file = bin_dir.join(format!("{}.dll", lib_name));
+                println!("[COPY]   Checking bin for: {}", dll_file.display());
                 if dll_file.exists() {
                     let target_file = target_dir.join(dll_file.file_name().unwrap());
                     if let Err(e) = fs::copy(&dll_file, &target_file) {
                         eprintln!("cargo:warning=Failed to copy {} to {}: {}", dll_file.display(), target_file.display(), e);
                     } else {
-                        println!("[COPY] Copied {} to {}", dll_file.display(), target_file.display());
+                        println!("[COPY] ✓ Copied {} to {}", dll_file.display(), target_file.display());
+                    }
+                } else {
+                    println!("[COPY]   Not found: {}", dll_file.display());
+                }
+            }
+        } else {
+            println!("[COPY] Bin directory does not exist: {}", bin_dir.display());
+        }
+        
+        // Also check build/bin directory (DLLs might be in build output)
+        let build_bin_dir = destination.join("build").join("bin");
+        println!("[COPY] Checking build/bin directory: {}", build_bin_dir.display());
+        if build_bin_dir.exists() {
+            println!("[COPY] Build/bin directory exists, checking for DLLs...");
+            if let Ok(entries) = fs::read_dir(&build_bin_dir) {
+                for entry in entries.flatten() {
+                    let file_name = entry.file_name();
+                    println!("[COPY]   Found in build/bin: {}", file_name.to_string_lossy());
+                }
+            }
+            for lib_name in libraries.iter().chain(optional_libs.iter()) {
+                let dll_file = build_bin_dir.join(format!("{}.dll", lib_name));
+                println!("[COPY]   Checking build/bin for: {}", dll_file.display());
+                if dll_file.exists() {
+                    let target_file = target_dir.join(dll_file.file_name().unwrap());
+                    if let Err(e) = fs::copy(&dll_file, &target_file) {
+                        eprintln!("cargo:warning=Failed to copy {} to {}: {}", dll_file.display(), target_file.display(), e);
+                    } else {
+                        println!("[COPY] ✓ Copied {} to {}", dll_file.display(), target_file.display());
+                    }
+                }
+            }
+        }
+        
+        // Also check build/bin/Release directory (Windows Release build output)
+        if cfg!(target_os = "windows") {
+            let build_bin_release_dir = destination.join("build").join("bin").join("Release");
+            println!("[COPY] Checking build/bin/Release directory: {}", build_bin_release_dir.display());
+            if build_bin_release_dir.exists() {
+                println!("[COPY] Build/bin/Release directory exists, checking for DLLs...");
+                if let Ok(entries) = fs::read_dir(&build_bin_release_dir) {
+                    for entry in entries.flatten() {
+                        let file_name = entry.file_name();
+                        println!("[COPY]   Found in build/bin/Release: {}", file_name.to_string_lossy());
+                    }
+                }
+                for lib_name in libraries.iter().chain(optional_libs.iter()) {
+                    let dll_file = build_bin_release_dir.join(format!("{}.dll", lib_name));
+                    println!("[COPY]   Checking build/bin/Release for: {}", dll_file.display());
+                    if dll_file.exists() {
+                        let target_file = target_dir.join(dll_file.file_name().unwrap());
+                        if let Err(e) = fs::copy(&dll_file, &target_file) {
+                            eprintln!("cargo:warning=Failed to copy {} to {}: {}", dll_file.display(), target_file.display(), e);
+                        } else {
+                            println!("[COPY] ✓ Copied {} to {}", dll_file.display(), target_file.display());
+                        }
                     }
                 }
             }

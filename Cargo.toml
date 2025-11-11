@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Rust FFI bindings for GGML (shared library)"
 license = "MIT OR Apache-2.0"
-repository = ""
+repository = "https://github.com/joshatdia/ggml-rs.git"
 links = "ggml"
 
 [features]

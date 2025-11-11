@@ -1,0 +1,8 @@
+C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-sys-a6abe5b8cd389084/out/build/CMakeFiles/INSTALL.dir
+C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-sys-a6abe5b8cd389084/out/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-sys-a6abe5b8cd389084/out/build/CMakeFiles/ZERO_CHECK.dir
+C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-sys-a6abe5b8cd389084/out/build/src/CMakeFiles/ggml-base.dir
+C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-sys-a6abe5b8cd389084/out/build/src/CMakeFiles/ggml.dir
+C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-sys-a6abe5b8cd389084/out/build/src/CMakeFiles/ggml-cpu.dir
+C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-sys-a6abe5b8cd389084/out/build/src/CMakeFiles/INSTALL.dir
+C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-sys-a6abe5b8cd389084/out/build/src/ggml-cpu/CMakeFiles/INSTALL.dir

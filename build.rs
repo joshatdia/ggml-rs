@@ -61,7 +61,7 @@ fn main() {
     // Generate bindings
     let bindings = bindgen::Builder::default()
         .header("wrapper.h")
-        .clang_arg(format!("-I{}", ggml_root.join("include").display()))
+        .clang_arg(format!("-I{}", manifest_path.display()))
         .allowlist_function("ggml_.*")
         .allowlist_type("ggml_.*")
         .allowlist_function("gguf_.*")

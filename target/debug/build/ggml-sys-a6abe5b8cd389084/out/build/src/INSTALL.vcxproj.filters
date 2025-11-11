@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-sys-a6abe5b8cd389084\out\build\CMakeFiles\cccd36a3b4135467ec886eb2610a8cdc\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{25023898-8AB7-3C86-A99B-FCBC624D979C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

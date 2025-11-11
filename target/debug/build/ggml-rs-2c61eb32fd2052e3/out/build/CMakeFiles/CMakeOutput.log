@@ -7,7 +7,7 @@ Id flags:
 The output was:
 0
 MSBuild version 17.14.19+164abd434 for .NET Framework
-Build started 11/11/2025 12:08:47 PM.
+Build started 11/11/2025 12:28:43 PM.
 
 Project "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\3.24.3\CompilerIdC\CompilerIdC.vcxproj" on node 1 (default targets).
 PrepareForBuild:
@@ -36,7 +36,7 @@ Build succeeded.
     0 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:00.43
+Time Elapsed 00:00:00.37
 
 
 Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
@@ -53,7 +53,7 @@ Id flags:
 The output was:
 0
 MSBuild version 17.14.19+164abd434 for .NET Framework
-Build started 11/11/2025 12:08:47 PM.
+Build started 11/11/2025 12:28:44 PM.
 
 Project "C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\3.24.3\CompilerIdCXX\CompilerIdCXX.vcxproj" on node 1 (default targets).
 PrepareForBuild:
@@ -82,7 +82,7 @@ Build succeeded.
     0 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:00.42
+Time Elapsed 00:00:00.37
 
 
 Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -94,30 +94,30 @@ The CXX compiler identification is MSVC, found in "C:/Users/JoshuaGoodman/Docume
 Detecting C compiler ABI info compiled with the following output:
 Change Dir: C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-2c61eb32fd2052e3/out/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_38e13.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_bbc8f.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
 
   CMakeCCompilerABI.c
-  cmTC_38e13.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_38e13.exe
+  cmTC_bbc8f.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_bbc8f.exe
 
 
 
 Detecting CXX compiler ABI info compiled with the following output:
 Change Dir: C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-2c61eb32fd2052e3/out/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_9eb5b.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_e43cc.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
 
   CMakeCXXCompilerABI.cpp
-  cmTC_9eb5b.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_9eb5b.exe
+  cmTC_e43cc.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_e43cc.exe
 
 
 
 Performing C SOURCE FILE Test HAS_AVX_1 succeeded with the following compile output:
 Change Dir: C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-2c61eb32fd2052e3/out/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_2bdf1.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_42a8a.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
 
   src.c
-  cmTC_2bdf1.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_2bdf1.exe
+  cmTC_42a8a.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_42a8a.exe
 
 
 ...and run output:
@@ -136,10 +136,10 @@ Source file was:
 Performing C SOURCE FILE Test HAS_AVX2_1 succeeded with the following compile output:
 Change Dir: C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-2c61eb32fd2052e3/out/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_d7477.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_5f86e.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
 
   src.c
-  cmTC_d7477.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_d7477.exe
+  cmTC_5f86e.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_5f86e.exe
 
 
 ...and run output:
@@ -160,10 +160,10 @@ Source file was:
 Performing C SOURCE FILE Test HAS_FMA_1 succeeded with the following compile output:
 Change Dir: C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-2c61eb32fd2052e3/out/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_7c806.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_92e14.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
 
   src.c
-  cmTC_7c806.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_7c806.exe
+  cmTC_92e14.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_92e14.exe
 
 
 ...and run output:
@@ -184,10 +184,10 @@ Source file was:
 Performing C SOURCE FILE Test HAS_AVX512_1 succeeded with the following compile output:
 Change Dir: C:/Users/JoshuaGoodman/Documents/GitHub/ggml-rs/target/debug/build/ggml-rs-2c61eb32fd2052e3/out/build/CMakeFiles/CMakeTmp
 
-Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_32ceb.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_0c2ad.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.14.19+164abd434 for .NET Framework
 
   src.c
-  cmTC_32ceb.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_32ceb.exe
+  cmTC_0c2ad.vcxproj -> C:\Users\JoshuaGoodman\Documents\GitHub\ggml-rs\target\debug\build\ggml-rs-2c61eb32fd2052e3\out\build\CMakeFiles\CMakeTmp\Debug\cmTC_0c2ad.exe
 
 
 ...and run output:

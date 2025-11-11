@@ -77,7 +77,13 @@ fn main() {
         .write_to_file(&out_path)
         .expect("Couldn't write bindings!");
 
-    // Stop if we're on docs.rs
+    // Export variables even on docs.rs so dependent crates can find them
+    // (We still need to export INCLUDE even if we don't build the library)
+    // Exporting INCLUDE creates DEP_GGML_RS_INCLUDE for dependent crates
+    let ggml_include = ggml_root.join("include");
+    println!("cargo:INCLUDE={}", ggml_include.display());
+    
+    // Stop if we're on docs.rs (don't build the library, but variables are already exported)
     if env::var("DOCS_RS").is_ok() {
         return;
     }
@@ -195,10 +201,11 @@ fn main() {
     
     // Export library path as environment variable for CMake find_package
     // Cargo automatically creates DEP_GGML_RS_ROOT for crate "ggml-rs"
-    // Exporting GGML_RS_INCLUDE creates DEP_GGML_RS_GGML_RS_INCLUDE
-    // (Exporting INCLUDE would create DEP_GGML_RS_INCLUDE)
-    println!("cargo:GGML_RS_LIB_DIR={}", lib_dir.display());
-    println!("cargo:GGML_RS_INCLUDE={}", ggml_root.join("include").display());
+    // Exporting INCLUDE creates DEP_GGML_RS_INCLUDE (without double prefix)
+    // Exporting GGML_RS_INCLUDE would create DEP_GGML_RS_GGML_RS_INCLUDE (redundant)
+    // We export INCLUDE to match what dependent crates expect: DEP_GGML_RS_INCLUDE
+    println!("cargo:LIB_DIR={}", lib_dir.display());
+    println!("cargo:INCLUDE={}", ggml_root.join("include").display());
     
     // Link to shared libraries (not static)
     println!("cargo:rustc-link-lib=dylib=ggml");

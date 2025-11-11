@@ -24,3 +24,7 @@ cc = { version = "1.0", features = ["parallel"] }
 
 [dependencies]
 
+[[bin]]
+name = "verify_build"
+path = "verify_build.rs"
+

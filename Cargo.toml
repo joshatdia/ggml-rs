@@ -1,0 +1,26 @@
+[package]
+name = "ggml-sys"
+version = "0.1.0"
+edition = "2021"
+description = "Rust FFI bindings for GGML (shared library)"
+license = "MIT OR Apache-2.0"
+repository = ""
+links = "ggml"
+
+[features]
+default = []
+metal = []
+cuda = []
+vulkan = []
+openblas = []
+openmp = []
+hipblas = []
+intel-sycl = []
+
+[build-dependencies]
+cmake = "0.1"
+bindgen = "0.71"
+cc = { version = "1.0", features = ["parallel"] }
+
+[dependencies]
+

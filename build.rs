@@ -689,6 +689,22 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
         // Note: Target names (ggml::ggml-base) stay unchanged for compatibility.
         // The IMPORTED_LOCATION will point to the namespaced library file because
         // we've patched the find_library calls above.
+
+        // FINAL ENFORCEMENT: Ensure the correct namespace is used everywhere.
+        // If this whisper file still references ggml_llama (or vice versa), force-replace.
+        if namespace == "ggml_whisper" {
+            if patched.contains("ggml_llama-") || patched.contains(" ggml_llama") {
+                eprintln!("cargo:warning=[PATCH] ⚠ Enforcing whisper namespace: replacing ggml_llama* → ggml_whisper*");
+                patched = patched.replace("ggml_llama-", "ggml_whisper-");
+                patched = patched.replace(" ggml_llama", " ggml_whisper");
+            }
+        } else if namespace == "ggml_llama" {
+            if patched.contains("ggml_whisper-") || patched.contains(" ggml_whisper") {
+                eprintln!("cargo:warning=[PATCH] ⚠ Enforcing llama namespace: replacing ggml_whisper* → ggml_llama*");
+                patched = patched.replace("ggml_whisper-", "ggml_llama-");
+                patched = patched.replace(" ggml_whisper", " ggml_llama");
+            }
+        }
         
         // Check if anything changed
         if patched != content {

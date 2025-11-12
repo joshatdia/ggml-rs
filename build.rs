@@ -235,7 +235,7 @@ fn main() {
 /// Build a single GGML variant with the specified namespace
 fn build_ggml_variant(ggml_root: &PathBuf, namespace: &str, tag: &str) -> Result<(PathBuf, PathBuf), Box<dyn std::error::Error>> {
     println!("[BUILD] Building {} variant with namespace: {}", tag, namespace);
-    
+
     // Build ggml as shared library using CMake
     let mut config = Config::new(&ggml_root);
 
@@ -243,7 +243,7 @@ fn build_ggml_variant(ggml_root: &PathBuf, namespace: &str, tag: &str) -> Result
     // The cmake crate will manage build directories automatically
     let out_dir = env::var("OUT_DIR").unwrap();
     let variant_install_prefix = PathBuf::from(&out_dir).join(tag);
-    
+
     config
         .profile("Release")
         .define("BUILD_SHARED_LIBS", "ON")  // Build as shared library
@@ -443,7 +443,8 @@ fn build_ggml_variant(ggml_root: &PathBuf, namespace: &str, tag: &str) -> Result
     }
     
     // Patch ggml-config.cmake to use namespaced library names
-    patch_ggml_config_cmake(&destination, namespace);
+    // Pass both the cmake build destination and the install prefix
+    patch_ggml_config_cmake(&destination, &variant_install_prefix, namespace);
     
     // Copy DLLs/shared libraries to variant-specific location
     // Consumers will copy from here to their target directory
@@ -453,19 +454,21 @@ fn build_ggml_variant(ggml_root: &PathBuf, namespace: &str, tag: &str) -> Result
 }
 
 /// Patch ggml-config.cmake to use namespaced library names
-fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
+fn patch_ggml_config_cmake(cmake_build_dir: &PathBuf, install_prefix: &PathBuf, namespace: &str) {
     use std::fs;
     use std::io::Write;
     
     eprintln!("cargo:warning=[PATCH] Patching ggml-config.cmake for namespace: {}", namespace);
-    eprintln!("cargo:warning=[PATCH] Destination: {}", destination.display());
+    eprintln!("cargo:warning=[PATCH] CMake build directory: {}", cmake_build_dir.display());
+    eprintln!("cargo:warning=[PATCH] Install prefix: {}", install_prefix.display());
     
     // ggml-config.cmake can be in multiple locations:
-    // 1. build/ggml-config.cmake (before install)
-    // 2. lib/cmake/ggml/ggml-config.cmake (after install)
+    // 1. In the CMake build directory: <cmake_build_dir>/build/ggml-config.cmake
+    // 2. In the install prefix: <install_prefix>/lib/cmake/ggml/ggml-config.cmake
     let possible_paths = vec![
-        destination.join("build").join("ggml-config.cmake"),
-        destination.join("lib").join("cmake").join("ggml").join("ggml-config.cmake"),
+        install_prefix.join("lib").join("cmake").join("ggml").join("ggml-config.cmake"),  // Install location (preferred)
+        cmake_build_dir.join("build").join("ggml-config.cmake"),  // Build location
+        cmake_build_dir.join("ggml-config.cmake"),  // Sometimes directly in build dir
     ];
     
     for config_path in possible_paths {

@@ -457,6 +457,9 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
     use std::fs;
     use std::io::Write;
     
+    eprintln!("cargo:warning=[PATCH] Patching ggml-config.cmake for namespace: {}", namespace);
+    eprintln!("cargo:warning=[PATCH] Destination: {}", destination.display());
+    
     // ggml-config.cmake can be in multiple locations:
     // 1. build/ggml-config.cmake (before install)
     // 2. lib/cmake/ggml/ggml-config.cmake (after install)
@@ -467,10 +470,12 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
     
     for config_path in possible_paths {
         if !config_path.exists() {
+            eprintln!("cargo:warning=[PATCH] Config file not found at: {}", config_path.display());
             continue;
         }
         
-        println!("[PATCH] Found ggml-config.cmake at: {}", config_path.display());
+        eprintln!("cargo:warning=[PATCH] Found ggml-config.cmake at: {}", config_path.display());
+        eprintln!("cargo:warning=[PATCH] Patching with namespace: {}", namespace);
         
         // Read the file
         let content = match fs::read_to_string(&config_path) {
@@ -504,16 +509,30 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
             &format!("find_library(GGML_BASE_LIBRARY {}-base ", namespace)
         );
         
-        // Replace backend libraries - use a simpler approach: replace "ggml-" with "{namespace}-"
-        // but preserve "ggml::" (target namespace) and other contexts
-        // This handles all backend libraries generically
-        
+        // Replace backend libraries - be very specific to avoid wrong replacements
         // First, protect "ggml::" by temporarily replacing it
         let protected_marker = "___GGML_TARGET_NAMESPACE___";
         patched = patched.replace("ggml::", protected_marker);
         
-        // Now replace all "ggml-" with "{namespace}-"
-        patched = patched.replace("ggml-", &format!("{}-", namespace));
+        // Replace backend library patterns specifically
+        // Pattern: find_library(... ggml-cpu ...) -> find_library(... {namespace}-cpu ...)
+        let backend_libs = vec!["cpu", "cuda", "metal", "vulkan", "hip", "blas", "sycl"];
+        for backend in &backend_libs {
+            // Replace in find_library calls
+            patched = patched.replace(
+                &format!("ggml-{}", backend),
+                &format!("{}-{}", namespace, backend)
+            );
+            // Also replace in set_target_properties or similar
+            patched = patched.replace(
+                &format!("\"ggml-{}\"", backend),
+                &format!("\"{}-{}\"", namespace, backend)
+            );
+            patched = patched.replace(
+                &format!("'ggml-{}'", backend),
+                &format!("'{}-{}'", namespace, backend)
+            );
+        }
         
         // Also replace standalone "ggml" (the main library) but be careful
         // Only replace "ggml" when it's a library name, not in other contexts
@@ -532,6 +551,14 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
             &format!(" {})", namespace)
         );
         
+        // IMPORTANT: Also check if the file already contains the wrong namespace and fix it
+        let wrong_namespace = if namespace == "ggml_llama" { "ggml_whisper" } else { "ggml_llama" };
+        if patched.contains(wrong_namespace) {
+            eprintln!("cargo:warning=[PATCH] ⚠ Found wrong namespace '{}' in config file, fixing...", wrong_namespace);
+            // Replace wrong namespace with correct one
+            patched = patched.replace(&wrong_namespace, namespace);
+        }
+        
         // Restore "ggml::"
         patched = patched.replace(protected_marker, "ggml::");
         
@@ -541,17 +568,30 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
         
         // Check if anything changed
         if patched != content {
+            // Verify the patch worked - check for the namespace in the patched content
+            if patched.contains(namespace) {
+                eprintln!("cargo:warning=[PATCH] ✓ Verified: patched content contains namespace '{}'", namespace);
+            } else {
+                eprintln!("cargo:warning=[PATCH] ⚠ WARNING: patched content does NOT contain namespace '{}'", namespace);
+            }
+            
+            // Check for wrong namespace (the other variant's namespace)
+            let wrong_namespace = if namespace == "ggml_llama" { "ggml_whisper" } else { "ggml_llama" };
+            if patched.contains(wrong_namespace) {
+                eprintln!("cargo:warning=[PATCH] ⚠ ERROR: patched content contains WRONG namespace '{}'!", wrong_namespace);
+            }
+            
             // Write the patched content back
             match fs::File::create(&config_path).and_then(|mut f| f.write_all(patched.as_bytes())) {
                 Ok(_) => {
-                    println!("[PATCH] ✓ Successfully patched ggml-config.cmake with namespace: {}", namespace);
+                    eprintln!("cargo:warning=[PATCH] ✓ Successfully patched ggml-config.cmake with namespace: {}", namespace);
                 }
                 Err(e) => {
-                    eprintln!("cargo:warning=Failed to write patched ggml-config.cmake: {}", e);
+                    eprintln!("cargo:warning=[PATCH] Failed to write patched ggml-config.cmake: {}", e);
                 }
             }
         } else {
-            println!("[PATCH] No changes needed in ggml-config.cmake");
+            eprintln!("cargo:warning=[PATCH] No changes needed in ggml-config.cmake (file may already be patched or doesn't need patching)");
         }
         
         // Only patch the first file found

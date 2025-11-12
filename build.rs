@@ -582,110 +582,149 @@ fn patch_ggml_config_cmake(cmake_build_dir: &PathBuf, install_prefix: &PathBuf, 
             all_targets.push(format!("ggml::{}-{}", namespace, backend));
         }
         
-        // Wrap each add_library call with if(NOT TARGET ...) guard
-        for target_name in &all_targets {
-            let pattern = format!("add_library({}", target_name);
-            let guard_line = format!("if(NOT TARGET {})", target_name);
-            
-            // Rebuild the file, inserting guards before ANY unguarded add_library for this target
-            let mut new_lines = Vec::<String>::new();
-            let mut in_guard = false;
-            let mut in_add_block = false;
-            let mut paren_count = 0;
-            let mut prev_was_guard_for_target = false;
-            
-            for line in patched.lines() {
-                let is_add_for_target = line.contains(&pattern) && line.contains("IMPORTED");
-                
-                // Track if the previous line was the guard for this target
-                if line.trim() == guard_line {
-                    prev_was_guard_for_target = true;
-                    new_lines.push(line.to_string());
-                    in_guard = true;
-                    continue;
-                }
-                
-                if is_add_for_target {
-                    // If not already guarded immediately above, add a guard now
-                    if !prev_was_guard_for_target {
-                        new_lines.push(guard_line.clone());
-                        in_guard = true;
-                    }
-                    // Add the add_library line
-                    new_lines.push(line.to_string());
-                    in_add_block = true;
-                    paren_count = line.matches('(').count() as i32 - line.matches(')').count() as i32;
-                    prev_was_guard_for_target = false;
-                    continue;
-                }
-                
-                if in_add_block {
-                    new_lines.push(line.to_string());
-                    paren_count += line.matches('(').count() as i32;
-                    paren_count -= line.matches(')').count() as i32;
-                    if paren_count <= 0 {
-                        // Close the guard if we opened one
-                        if in_guard {
-                            new_lines.push("endif()".to_string());
-                            in_guard = false;
-                        }
-                        in_add_block = false;
-                    }
-                    prev_was_guard_for_target = false;
-                    continue;
-                }
-                
-                // Reset guard tracking if line is unrelated
-                prev_was_guard_for_target = false;
-                new_lines.push(line.to_string());
-            }
-            
-            // Close any dangling guard
-            if in_guard {
-                new_lines.push("endif()".to_string());
-            }
-            
-            patched = new_lines.join("\n");
-        }
-        
-        // Also remove any duplicate add_library calls (as a safety measure)
+        // STEP 1: Remove ALL duplicate add_library blocks FIRST (before adding guards)
+        // This ensures we only have one definition per target
+        eprintln!("cargo:warning=[PATCH] Step 1: Removing duplicate add_library blocks...");
         for target_name in &all_targets {
             let pattern = format!("add_library({}", target_name);
             let count = patched.matches(&pattern).count();
             if count > 1 {
-                eprintln!("cargo:warning=[PATCH] ⚠ Found {} duplicate add_library calls for {} (even with guards), removing...", count, target_name);
-                // Keep only the first occurrence, remove the rest
-                let mut first = true;
+                eprintln!("cargo:warning=[PATCH] ⚠ Found {} duplicate add_library calls for {}, removing duplicates...", count, target_name);
+                
+                // Parse the file and keep only the FIRST complete add_library block for this target
                 let mut new_lines = Vec::new();
-                let mut skip_block = false;
+                let mut seen_target = false;
+                let mut in_block = false;
                 let mut paren_count = 0;
+                let mut skip_this_block = false;
                 
                 for line in patched.lines() {
-                    if line.contains(&pattern) && line.contains("IMPORTED") {
-                        if first {
-                            first = false;
-                            new_lines.push(line.to_string());
-                            skip_block = false;
-                            paren_count = line.matches('(').count() - line.matches(')').count();
+                    let is_target_line = line.contains(&pattern) && line.contains("IMPORTED");
+                    
+                    if is_target_line {
+                        if seen_target {
+                            // This is a duplicate - skip this entire block
+                            eprintln!("cargo:warning=[PATCH]   Removing duplicate block starting at: {}", line.trim());
+                            skip_this_block = true;
+                            paren_count = line.matches('(').count() as i32 - line.matches(')').count() as i32;
+                            continue;
                         } else {
-                            eprintln!("cargo:warning=[PATCH]   Removing duplicate: {}", line);
-                            skip_block = true;
-                            paren_count = line.matches('(').count() - line.matches(')').count();
+                            // First occurrence - keep it
+                            seen_target = true;
+                            in_block = true;
+                            new_lines.push(line.to_string());
+                            paren_count = line.matches('(').count() as i32 - line.matches(')').count() as i32;
                             continue;
                         }
-                    } else if skip_block {
-                        paren_count += line.matches('(').count();
-                        paren_count -= line.matches(')').count();
+                    }
+                    
+                    if skip_this_block {
+                        // Skip lines until we close the block
+                        paren_count += line.matches('(').count() as i32;
+                        paren_count -= line.matches(')').count() as i32;
                         if paren_count <= 0 {
-                            skip_block = false;
+                            skip_this_block = false;
                             paren_count = 0;
                         }
                         continue;
+                    }
+                    
+                    if in_block {
+                        // We're inside the add_library block we're keeping
+                        new_lines.push(line.to_string());
+                        paren_count += line.matches('(').count() as i32;
+                        paren_count -= line.matches(')').count() as i32;
+                        if paren_count <= 0 {
+                            in_block = false;
+                            paren_count = 0;
+                        }
                     } else {
+                        // Normal line, not in any block
                         new_lines.push(line.to_string());
                     }
                 }
+                
                 patched = new_lines.join("\n");
+                eprintln!("cargo:warning=[PATCH] ✓ Removed duplicates for {}", target_name);
+            }
+        }
+        
+        // STEP 2: Add if(NOT TARGET ...) guards around each add_library call in a single pass
+        eprintln!("cargo:warning=[PATCH] Step 2: Adding if(NOT TARGET ...) guards...");
+        let mut new_lines = Vec::<String>::new();
+        let mut in_block = false;
+        let mut paren_count = 0;
+        let mut current_target: Option<String> = None;
+        let mut needs_guard = false;
+        
+        for line in patched.lines() {
+            // Check if this line starts an add_library for any of our targets
+            let mut found_target: Option<String> = None;
+            for target_name in &all_targets {
+                let pattern = format!("add_library({}", target_name);
+                if line.contains(&pattern) && line.contains("IMPORTED") {
+                    found_target = Some(target_name.clone());
+                    break;
+                }
+            }
+            
+            if let Some(target) = found_target {
+                // Check if there's already a guard immediately before this line
+                let guard_line = format!("if(NOT TARGET {})", target);
+                let has_guard = new_lines.last()
+                    .map(|l| l.trim() == guard_line)
+                    .unwrap_or(false);
+                
+                if !has_guard {
+                    // Add guard before this add_library
+                    new_lines.push(guard_line.clone());
+                    needs_guard = true;
+                }
+                
+                current_target = Some(target.clone());
+                in_block = true;
+                paren_count = line.matches('(').count() as i32 - line.matches(')').count() as i32;
+                new_lines.push(line.to_string());
+                continue;
+            }
+            
+            if in_block {
+                // We're inside an add_library block
+                new_lines.push(line.to_string());
+                paren_count += line.matches('(').count() as i32;
+                paren_count -= line.matches(')').count() as i32;
+                
+                if paren_count <= 0 {
+                    // Block is complete - close the guard if we opened one
+                    if needs_guard {
+                        new_lines.push("endif()".to_string());
+                        needs_guard = false;
+                    }
+                    in_block = false;
+                    current_target = None;
+                    paren_count = 0;
+                }
+            } else {
+                // Normal line, not in any block
+                new_lines.push(line.to_string());
+            }
+        }
+        
+        // Close any dangling guard
+        if needs_guard {
+            new_lines.push("endif()".to_string());
+        }
+        
+        patched = new_lines.join("\n");
+        
+        // STEP 3: Final verification - check for any remaining duplicates
+        for target_name in &all_targets {
+            let pattern = format!("add_library({}", target_name);
+            let count = patched.matches(&pattern).count();
+            if count > 1 {
+                eprintln!("cargo:warning=[PATCH] ⚠ ERROR: Still found {} duplicate add_library calls for {} after deduplication!", count, target_name);
+            } else if count == 1 {
+                eprintln!("cargo:warning=[PATCH] ✓ Verified: {} has exactly one add_library call", target_name);
             }
         }
         

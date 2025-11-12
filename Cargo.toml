@@ -5,7 +5,7 @@ edition = "2021"
 description = "Rust FFI bindings for GGML (shared library)"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/joshatdia/ggml-rs.git"
-links = "ggml_dual"  # Unique name to prevent multiple native builds racing
+links = "ggml_rs"  # Must match expected DEP_GGML_RS_* variable prefix
 
 [features]
 default = []

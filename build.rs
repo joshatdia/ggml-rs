@@ -570,8 +570,8 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
         // Restore "ggml::"
         patched = patched.replace(protected_marker, "ggml::");
         
-        // CRITICAL: Remove duplicate add_library calls for imported targets
-        // Pattern: add_library(ggml::ggml_whisper-cpu ...) might appear multiple times
+        // CRITICAL: Add if(NOT TARGET ...) guards to prevent duplicate target errors
+        // This is safer than trying to remove duplicates - CMake will skip if target exists
         let backend_libs = vec!["cpu", "cuda", "metal", "vulkan", "hip", "blas", "sycl"];
         let mut all_targets = vec![
             format!("ggml::{}", namespace),
@@ -581,12 +581,63 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
             all_targets.push(format!("ggml::{}-{}", namespace, backend));
         }
         
-        // Remove duplicates for each target
+        // Wrap each add_library call with if(NOT TARGET ...) guard
+        for target_name in &all_targets {
+            let pattern = format!("add_library({}", target_name);
+            let guard_pattern = format!("if(NOT TARGET {})", target_name);
+            
+            // Check if guard already exists
+            if !patched.contains(&guard_pattern) {
+                // Find all add_library calls for this target and wrap them
+                let mut new_lines = Vec::new();
+                let mut in_target_block = false;
+                let mut paren_count = 0;
+                let mut added_guard = false;
+                
+                for line in patched.lines() {
+                    // Check if this is an add_library call for our target
+                    if line.contains(&pattern) && line.contains("IMPORTED") {
+                        if !added_guard {
+                            // Add the guard before the first occurrence
+                            new_lines.push(format!("if(NOT TARGET {})", target_name));
+                            added_guard = true;
+                        }
+                        new_lines.push(line.to_string());
+                        in_target_block = true;
+                        paren_count = line.matches('(').count() - line.matches(')').count();
+                    } else if in_target_block {
+                        new_lines.push(line.to_string());
+                        paren_count += line.matches('(').count();
+                        paren_count -= line.matches(')').count();
+                        // When we hit the closing paren of add_library, close the if block
+                        if paren_count <= 0 {
+                            new_lines.push("endif()".to_string());
+                            in_target_block = false;
+                            paren_count = 0;
+                        }
+                    } else {
+                        new_lines.push(line.to_string());
+                    }
+                }
+                
+                // If we added a guard but didn't close it, close it now
+                if added_guard && in_target_block {
+                    new_lines.push("endif()".to_string());
+                }
+                
+                if added_guard {
+                    eprintln!("cargo:warning=[PATCH] ✓ Added if(NOT TARGET {}) guard for {}", target_name, target_name);
+                    patched = new_lines.join("\n");
+                }
+            }
+        }
+        
+        // Also remove any duplicate add_library calls (as a safety measure)
         for target_name in &all_targets {
             let pattern = format!("add_library({}", target_name);
             let count = patched.matches(&pattern).count();
             if count > 1 {
-                eprintln!("cargo:warning=[PATCH] ⚠ Found {} duplicate add_library calls for {}, removing...", count, target_name);
+                eprintln!("cargo:warning=[PATCH] ⚠ Found {} duplicate add_library calls for {} (even with guards), removing...", count, target_name);
                 // Keep only the first occurrence, remove the rest
                 let mut first = true;
                 let mut new_lines = Vec::new();
@@ -599,7 +650,6 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
                             first = false;
                             new_lines.push(line);
                             skip_block = false;
-                            // Count parentheses in this line
                             paren_count = line.matches('(').count() - line.matches(')').count();
                         } else {
                             eprintln!("cargo:warning=[PATCH]   Removing duplicate: {}", line);
@@ -608,7 +658,6 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
                             continue;
                         }
                     } else if skip_block {
-                        // Count parentheses to know when the block ends
                         paren_count += line.matches('(').count();
                         paren_count -= line.matches(')').count();
                         if paren_count <= 0 {

@@ -16,6 +16,22 @@ fn main() {
     println!("[BUILD] HIPBLAS feature enabled: {}", cfg!(feature = "hipblas"));
     println!("[BUILD] Intel-SYCL feature enabled: {}", cfg!(feature = "intel-sycl"));
     
+    // Determine namespace based on features
+    let namespace = if cfg!(feature = "namespace-llama") {
+        Some("ggml_llama")
+    } else if cfg!(feature = "namespace-whisper") {
+        Some("ggml_whisper")
+    } else {
+        None  // Default: no namespace (for backward compatibility)
+    };
+    
+    if let Some(ns) = namespace {
+        println!("[BUILD] Using GGML namespace: {}", ns);
+    } else {
+        println!("[BUILD] No namespace specified - using default GGML symbols");
+        println!("[BUILD] WARNING: If using with both llama.cpp and whisper.cpp, enable namespace-llama or namespace-whisper");
+    }
+    
     let target = env::var("TARGET").unwrap();
     
     // Link C++ standard library
@@ -111,6 +127,12 @@ fn main() {
         // We've created ggml.pc.in to satisfy the configure_file requirement
         .very_verbose(true)
         .pic(true);
+    
+    // Set namespace if specified
+    if let Some(ns) = namespace {
+        config.define("GGML_NAME", ns);
+        println!("[BUILD] Setting GGML_NAME={}", ns);
+    }
 
     if cfg!(target_os = "windows") {
         config.cxxflag("/utf-8");
@@ -259,31 +281,40 @@ fn main() {
     println!("cargo:LIB_DIR={}", lib_dir.display());
     println!("cargo:INCLUDE={}", ggml_root.join("include").display());
     
-    // Link to shared libraries (not static)
-    println!("cargo:rustc-link-lib=dylib=ggml");
-    println!("cargo:rustc-link-lib=dylib=ggml-base");
-    println!("cargo:rustc-link-lib=dylib=ggml-cpu");
+    // Determine library base name based on namespace (for linking)
+    let link_base_name = if cfg!(feature = "namespace-llama") {
+        "ggml_llama"
+    } else if cfg!(feature = "namespace-whisper") {
+        "ggml_whisper"
+    } else {
+        "ggml"  // Default: no namespace
+    };
+    
+    // Link to shared libraries (not static) - using namespace-aware names
+    println!("cargo:rustc-link-lib=dylib={}", link_base_name);
+    println!("cargo:rustc-link-lib=dylib={}-base", link_base_name);
+    println!("cargo:rustc-link-lib=dylib={}-cpu", link_base_name);
     
     if cfg!(target_os = "macos") || cfg!(feature = "openblas") {
-        println!("cargo:rustc-link-lib=dylib=ggml-blas");
+        println!("cargo:rustc-link-lib=dylib={}-blas", link_base_name);
     }
     
     if cfg!(feature = "vulkan") {
-        println!("cargo:rustc-link-lib=dylib=ggml-vulkan");
+        println!("cargo:rustc-link-lib=dylib={}-vulkan", link_base_name);
     }
 
     if cfg!(feature = "hipblas") {
-        println!("cargo:rustc-link-lib=dylib=ggml-hip");
+        println!("cargo:rustc-link-lib=dylib={}-hip", link_base_name);
     }
 
     if cfg!(feature = "metal") {
-        println!("cargo:rustc-link-lib=dylib=ggml-metal");
+        println!("cargo:rustc-link-lib=dylib={}-metal", link_base_name);
     }
 
     if cfg!(feature = "cuda") {
         // Check if ggml-cuda library exists before linking
         // On Windows, we need the .lib import library file for linking
-        let cuda_lib_name = "ggml-cuda";
+        let cuda_lib_name = format!("{}-cuda", link_base_name);
         
         // Check if the library file exists in install directory
         // On Windows, we need the .lib file (import library) for linking
@@ -364,26 +395,26 @@ fn main() {
         // Only link if the library exists (check both install and build directories)
         if cuda_lib_file.exists() {
             println!("cargo:rustc-link-lib=dylib={}", cuda_lib_name);
-            println!("[CUDA DEBUG] SUCCESS: Linking to ggml-cuda (found in install directory)");
+            println!("[CUDA DEBUG] SUCCESS: Linking to {} (found in install directory)", cuda_lib_name);
         } else if build_lib_file.exists() {
             // Library exists in build directory but not installed - add build directory to link search
             println!("cargo:rustc-link-search=native={}", build_lib_file.parent().unwrap().display());
             println!("cargo:rustc-link-lib=dylib={}", cuda_lib_name);
-            println!("[CUDA DEBUG] SUCCESS: Linking to ggml-cuda (found in build directory)");
+            println!("[CUDA DEBUG] SUCCESS: Linking to {} (found in build directory)", cuda_lib_name);
         } else {
             // If library doesn't exist, warn but don't fail
             // This can happen if CUDA wasn't properly configured during build
-            println!("[CUDA DEBUG] ERROR: ggml-cuda library not found at {} or {}", cuda_lib_file.display(), build_lib_file.display());
+            println!("[CUDA DEBUG] ERROR: {} library not found at {} or {}", cuda_lib_name, cuda_lib_file.display(), build_lib_file.display());
             println!("[CUDA DEBUG] Make sure CUDA is properly configured and GGML_CUDA=ON was set during CMake build.");
         }
     }
 
     if cfg!(feature = "openblas") {
-        println!("cargo:rustc-link-lib=dylib=ggml-blas");
+        println!("cargo:rustc-link-lib=dylib={}-blas", link_base_name);
     }
 
     if cfg!(feature = "intel-sycl") {
-        println!("cargo:rustc-link-lib=dylib=ggml-sycl");
+        println!("cargo:rustc-link-lib=dylib={}-sycl", link_base_name);
     }
 
     // Copy DLLs/shared libraries to target directory for runtime
@@ -402,12 +433,17 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
     // Get the target directory (where the executable will be)
     // OUT_DIR is like: target/debug/build/ggml-rs-xxx/out
     // We need: target/debug/ or target/release/
+    // Structure: target/<profile>/build/<crate>-<hash>/out
+    // Go up 4 levels: out -> <crate>-<hash> -> build -> <profile> -> target
+    // Then join <profile> to get target/<profile>/
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
     let target_dir = out_dir
-        .parent().unwrap()  // out/
+        .parent().unwrap()  // <crate>-<hash>/
         .parent().unwrap()  // build/
+        .parent().unwrap()  // <profile>/
         .parent().unwrap()  // target/
-        .join(env::var("PROFILE").unwrap_or_else(|_| "debug".to_string()));
+        .join(&profile);    // target/<profile>/
     
     println!("[COPY] Target directory: {}", target_dir.display());
     
@@ -426,37 +462,45 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
         "so"
     };
     
-    // List of libraries to copy
-    let libraries = vec![
-        "ggml",
-        "ggml-base",
-        "ggml-cpu",
+    // Determine library base name based on namespace
+    let lib_base_name = if cfg!(feature = "namespace-llama") {
+        "ggml_llama"
+    } else if cfg!(feature = "namespace-whisper") {
+        "ggml_whisper"
+    } else {
+        "ggml"  // Default: no namespace
+    };
+    
+    // List of libraries to copy (using namespace-aware names)
+    let mut libraries = vec![
+        lib_base_name.to_string(),
+        format!("{}-base", lib_base_name),
+        format!("{}-cpu", lib_base_name),
     ];
     
-    // Add optional libraries based on features
-    let mut optional_libs = Vec::new();
+    // Add optional libraries based on features (backend libraries use namespace prefix)
     if cfg!(feature = "cuda") {
-        optional_libs.push("ggml-cuda");
+        libraries.push(format!("{}-cuda", lib_base_name));
     }
     if cfg!(feature = "vulkan") {
-        optional_libs.push("ggml-vulkan");
+        libraries.push(format!("{}-vulkan", lib_base_name));
     }
     if cfg!(feature = "hipblas") {
-        optional_libs.push("ggml-hip");
+        libraries.push(format!("{}-hip", lib_base_name));
     }
     if cfg!(feature = "metal") {
-        optional_libs.push("ggml-metal");
+        libraries.push(format!("{}-metal", lib_base_name));
     }
     if cfg!(feature = "openblas") || cfg!(target_os = "macos") {
-        optional_libs.push("ggml-blas");
+        libraries.push(format!("{}-blas", lib_base_name));
     }
     if cfg!(feature = "intel-sycl") {
-        optional_libs.push("ggml-sycl");
+        libraries.push(format!("{}-sycl", lib_base_name));
     }
     
     // Copy libraries from install directory
-    println!("[COPY] Libraries to copy: {:?}", libraries.iter().chain(optional_libs.iter()).collect::<Vec<_>>());
-    for lib_name in libraries.iter().chain(optional_libs.iter()) {
+    println!("[COPY] Libraries to copy: {:?}", libraries);
+    for lib_name in libraries.iter() {
         println!("[COPY] Checking for library: {}", lib_name);
         let lib_file = if cfg!(target_os = "windows") {
             lib_dir.join(format!("{}.{}", lib_name, lib_ext))
@@ -511,7 +555,7 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
                     println!("[COPY]   Found in bin: {}", file_name.to_string_lossy());
                 }
             }
-            for lib_name in libraries.iter().chain(optional_libs.iter()) {
+            for lib_name in libraries.iter() {
                 let dll_file = bin_dir.join(format!("{}.dll", lib_name));
                 println!("[COPY]   Checking bin for: {}", dll_file.display());
                 if dll_file.exists() {
@@ -540,7 +584,7 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
                     println!("[COPY]   Found in build/bin: {}", file_name.to_string_lossy());
                 }
             }
-            for lib_name in libraries.iter().chain(optional_libs.iter()) {
+            for lib_name in libraries.iter() {
                 let dll_file = build_bin_dir.join(format!("{}.dll", lib_name));
                 println!("[COPY]   Checking build/bin for: {}", dll_file.display());
                 if dll_file.exists() {
@@ -566,7 +610,7 @@ fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {
                         println!("[COPY]   Found in build/bin/Release: {}", file_name.to_string_lossy());
                     }
                 }
-                for lib_name in libraries.iter().chain(optional_libs.iter()) {
+                for lib_name in libraries.iter() {
                     let dll_file = build_bin_release_dir.join(format!("{}.dll", lib_name));
                     println!("[COPY]   Checking build/bin/Release for: {}", dll_file.display());
                     if dll_file.exists() {

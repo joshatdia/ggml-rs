@@ -16,6 +16,9 @@ openblas = []
 openmp = []
 hipblas = []
 intel-sycl = []
+# Namespace features - only one should be enabled per dependent crate
+namespace-llama = []
+namespace-whisper = []
 
 [build-dependencies]
 cmake = "0.1"

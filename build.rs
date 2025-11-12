@@ -570,13 +570,11 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
         // Restore "ggml::"
         patched = patched.replace(protected_marker, "ggml::");
         
-        // CRITICAL: Add if(NOT TARGET ...) guards to prevent duplicate target errors
-        // This is safer than trying to remove duplicates - CMake will skip if target exists
+        // Build the list of all ggml imported targets we may need to guard/dedup
         let backend_libs = vec!["cpu", "cuda", "metal", "vulkan", "hip", "blas", "sycl"];
-        let mut all_targets = vec![
-            format!("ggml::{}", namespace),
-            format!("ggml::{}-base", namespace),
-        ];
+        let mut all_targets: Vec<String> = Vec::new();
+        all_targets.push(format!("ggml::{}", namespace));
+        all_targets.push(format!("ggml::{}-base", namespace));
         for backend in &backend_libs {
             all_targets.push(format!("ggml::{}-{}", namespace, backend));
         }
@@ -584,52 +582,67 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
         // Wrap each add_library call with if(NOT TARGET ...) guard
         for target_name in &all_targets {
             let pattern = format!("add_library({}", target_name);
-            let guard_pattern = format!("if(NOT TARGET {})", target_name);
+            let guard_line = format!("if(NOT TARGET {})", target_name);
             
-            // Check if guard already exists
-            if !patched.contains(&guard_pattern) {
-                // Find all add_library calls for this target and wrap them
-                let mut new_lines = Vec::new();
-                let mut in_target_block = false;
-                let mut paren_count = 0;
-                let mut added_guard = false;
+            // Rebuild the file, inserting guards before ANY unguarded add_library for this target
+            let mut new_lines = Vec::<String>::new();
+            let mut in_guard = false;
+            let mut in_add_block = false;
+            let mut paren_count = 0;
+            let mut prev_was_guard_for_target = false;
+            
+            for line in patched.lines() {
+                let is_add_for_target = line.contains(&pattern) && line.contains("IMPORTED");
                 
-                for line in patched.lines() {
-                    // Check if this is an add_library call for our target
-                    if line.contains(&pattern) && line.contains("IMPORTED") {
-                        if !added_guard {
-                            // Add the guard before the first occurrence
-                            new_lines.push(format!("if(NOT TARGET {})", target_name));
-                            added_guard = true;
-                        }
-                        new_lines.push(line.to_string());
-                        in_target_block = true;
-                        paren_count = line.matches('(').count() - line.matches(')').count();
-                    } else if in_target_block {
-                        new_lines.push(line.to_string());
-                        paren_count += line.matches('(').count();
-                        paren_count -= line.matches(')').count();
-                        // When we hit the closing paren of add_library, close the if block
-                        if paren_count <= 0 {
-                            new_lines.push("endif()".to_string());
-                            in_target_block = false;
-                            paren_count = 0;
-                        }
-                    } else {
-                        new_lines.push(line.to_string());
+                // Track if the previous line was the guard for this target
+                if line.trim() == guard_line {
+                    prev_was_guard_for_target = true;
+                    new_lines.push(line.to_string());
+                    in_guard = true;
+                    continue;
+                }
+                
+                if is_add_for_target {
+                    // If not already guarded immediately above, add a guard now
+                    if !prev_was_guard_for_target {
+                        new_lines.push(guard_line.clone());
+                        in_guard = true;
                     }
+                    // Add the add_library line
+                    new_lines.push(line.to_string());
+                    in_add_block = true;
+                    paren_count = line.matches('(').count() as i32 - line.matches(')').count() as i32;
+                    prev_was_guard_for_target = false;
+                    continue;
                 }
                 
-                // If we added a guard but didn't close it, close it now
-                if added_guard && in_target_block {
-                    new_lines.push("endif()".to_string());
+                if in_add_block {
+                    new_lines.push(line.to_string());
+                    paren_count += line.matches('(').count() as i32;
+                    paren_count -= line.matches(')').count() as i32;
+                    if paren_count <= 0 {
+                        // Close the guard if we opened one
+                        if in_guard {
+                            new_lines.push("endif()".to_string());
+                            in_guard = false;
+                        }
+                        in_add_block = false;
+                    }
+                    prev_was_guard_for_target = false;
+                    continue;
                 }
                 
-                if added_guard {
-                    eprintln!("cargo:warning=[PATCH] ✓ Added if(NOT TARGET {}) guard for {}", target_name, target_name);
-                    patched = new_lines.join("\n");
-                }
+                // Reset guard tracking if line is unrelated
+                prev_was_guard_for_target = false;
+                new_lines.push(line.to_string());
             }
+            
+            // Close any dangling guard
+            if in_guard {
+                new_lines.push("endif()".to_string());
+            }
+            
+            patched = new_lines.join("\n");
         }
         
         // Also remove any duplicate add_library calls (as a safety measure)
@@ -648,7 +661,7 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
                     if line.contains(&pattern) && line.contains("IMPORTED") {
                         if first {
                             first = false;
-                            new_lines.push(line);
+                            new_lines.push(line.to_string());
                             skip_block = false;
                             paren_count = line.matches('(').count() - line.matches(')').count();
                         } else {
@@ -666,7 +679,7 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
                         }
                         continue;
                     } else {
-                        new_lines.push(line);
+                        new_lines.push(line.to_string());
                     }
                 }
                 patched = new_lines.join("\n");

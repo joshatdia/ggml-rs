@@ -467,10 +467,122 @@ fn main() {
         println!("cargo:rustc-link-lib=dylib={}-sycl", link_base_name);
     }
 
+    // Patch ggml-config.cmake if namespace is enabled
+    if let Some(ns) = namespace {
+        patch_ggml_config_cmake(&destination, ns);
+    }
+    
     // Copy DLLs/shared libraries to target directory for runtime
     // On Windows, DLLs must be in the same directory as the executable
     // On Unix, we can use rpath, but copying ensures they're available
     copy_runtime_libraries(&destination, &lib_dir);
+}
+
+/// Patch ggml-config.cmake to use namespaced library names
+fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
+    use std::fs;
+    use std::io::Write;
+    
+    // ggml-config.cmake can be in multiple locations:
+    // 1. build/ggml-config.cmake (before install)
+    // 2. lib/cmake/ggml/ggml-config.cmake (after install)
+    let possible_paths = vec![
+        destination.join("build").join("ggml-config.cmake"),
+        destination.join("lib").join("cmake").join("ggml").join("ggml-config.cmake"),
+    ];
+    
+    for config_path in possible_paths {
+        if !config_path.exists() {
+            continue;
+        }
+        
+        println!("[PATCH] Found ggml-config.cmake at: {}", config_path.display());
+        
+        // Read the file
+        let content = match fs::read_to_string(&config_path) {
+            Ok(content) => content,
+            Err(e) => {
+                eprintln!("cargo:warning=Failed to read ggml-config.cmake: {}", e);
+                continue;
+            }
+        };
+        
+        // Replace library names with namespaced versions
+        let mut patched = content.clone();
+        
+        // Replace main library: find_library(GGML_LIBRARY ggml -> find_library(GGML_LIBRARY ggml_llama
+        patched = patched.replace(
+            &format!("find_library(GGML_LIBRARY ggml\n"),
+            &format!("find_library(GGML_LIBRARY {}\n", namespace)
+        );
+        patched = patched.replace(
+            &format!("find_library(GGML_LIBRARY ggml "),
+            &format!("find_library(GGML_LIBRARY {} ", namespace)
+        );
+        
+        // Replace base library: find_library(GGML_BASE_LIBRARY ggml-base -> find_library(GGML_BASE_LIBRARY ggml_llama-base
+        patched = patched.replace(
+            &format!("find_library(GGML_BASE_LIBRARY ggml-base\n"),
+            &format!("find_library(GGML_BASE_LIBRARY {}-base\n", namespace)
+        );
+        patched = patched.replace(
+            &format!("find_library(GGML_BASE_LIBRARY ggml-base "),
+            &format!("find_library(GGML_BASE_LIBRARY {}-base ", namespace)
+        );
+        
+        // Replace backend libraries - use a simpler approach: replace "ggml-" with "{namespace}-"
+        // but preserve "ggml::" (target namespace) and other contexts
+        // This handles all backend libraries generically
+        
+        // First, protect "ggml::" by temporarily replacing it
+        let protected_marker = "___GGML_TARGET_NAMESPACE___";
+        patched = patched.replace("ggml::", protected_marker);
+        
+        // Now replace all "ggml-" with "{namespace}-"
+        patched = patched.replace("ggml-", &format!("{}-", namespace));
+        
+        // Also replace standalone "ggml" (the main library) but be careful
+        // Only replace "ggml" when it's a library name, not in other contexts
+        // Pattern: find_library(GGML_LIBRARY ggml -> find_library(GGML_LIBRARY {namespace}
+        // We already handled this above, but let's also handle any remaining cases
+        patched = patched.replace(
+            &format!(" ggml\n"),
+            &format!(" {}\n", namespace)
+        );
+        patched = patched.replace(
+            &format!(" ggml "),
+            &format!(" {} ", namespace)
+        );
+        patched = patched.replace(
+            &format!(" ggml)"),
+            &format!(" {})", namespace)
+        );
+        
+        // Restore "ggml::"
+        patched = patched.replace(protected_marker, "ggml::");
+        
+        // Note: Target names (ggml::ggml-base) stay unchanged for compatibility.
+        // The IMPORTED_LOCATION will point to the namespaced library file because
+        // we've patched the find_library calls above.
+        
+        // Check if anything changed
+        if patched != content {
+            // Write the patched content back
+            match fs::File::create(&config_path).and_then(|mut f| f.write_all(patched.as_bytes())) {
+                Ok(_) => {
+                    println!("[PATCH] ✓ Successfully patched ggml-config.cmake with namespace: {}", namespace);
+                }
+                Err(e) => {
+                    eprintln!("cargo:warning=Failed to write patched ggml-config.cmake: {}", e);
+                }
+            }
+        } else {
+            println!("[PATCH] No changes needed in ggml-config.cmake");
+        }
+        
+        // Only patch the first file found
+        break;
+    }
 }
 
 fn copy_runtime_libraries(destination: &PathBuf, lib_dir: &PathBuf) {

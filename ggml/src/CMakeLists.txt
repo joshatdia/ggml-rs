@@ -193,7 +193,7 @@ if (GGML_BACKEND_DL AND NOT BUILD_SHARED_LIBS)
     message(FATAL_ERROR "GGML_BACKEND_DL requires BUILD_SHARED_LIBS")
 endif()
 
-add_library(ggml-base
+add_library(${GGML_BASE_LIB_NAME}
             ../include/ggml.h
             ../include/ggml-alloc.h
             ../include/ggml-backend.h
@@ -211,35 +211,50 @@ add_library(ggml-base
             ggml-quants.h
             gguf.cpp)
 
-target_include_directories(ggml-base PRIVATE .)
+target_include_directories(${GGML_BASE_LIB_NAME} PRIVATE .)
 if (GGML_BACKEND_DL)
-    target_compile_definitions(ggml-base PUBLIC GGML_BACKEND_DL)
+    target_compile_definitions(${GGML_BASE_LIB_NAME} PUBLIC GGML_BACKEND_DL)
 endif()
 
-add_library(ggml
+add_library(${GGML_LIB_NAME}
             ggml-backend-reg.cpp)
-add_library(ggml::ggml ALIAS ggml)
+add_library(ggml::ggml ALIAS ${GGML_LIB_NAME})
 
 if (GGML_BACKEND_DIR)
     if (NOT GGML_BACKEND_DL)
         message(FATAL_ERROR "GGML_BACKEND_DIR requires GGML_BACKEND_DL")
     endif()
-    target_compile_definitions(ggml PUBLIC GGML_BACKEND_DIR="${GGML_BACKEND_DIR}")
+    target_compile_definitions(${GGML_LIB_NAME} PUBLIC GGML_BACKEND_DIR="${GGML_BACKEND_DIR}")
 endif()
 
-target_link_libraries(ggml PUBLIC ggml-base)
+target_link_libraries(${GGML_LIB_NAME} PUBLIC ${GGML_BASE_LIB_NAME})
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    target_link_libraries(ggml PRIVATE dl)
+    target_link_libraries(${GGML_LIB_NAME} PRIVATE dl)
 endif()
 
 function(ggml_add_backend_library backend)
+    # Keep the target name as-is (e.g., "ggml-cuda") so backend CMakeLists.txt files
+    # can reference it, but set OUTPUT_NAME to use namespace prefix if GGML_NAME is set
+    # This way the output file will be "ggml_llama-cuda.dll" but the target is still "ggml-cuda"
+    if (DEFINED GGML_NAME)
+        # Extract the backend suffix (e.g., "cuda" from "ggml-cuda")
+        string(REGEX REPLACE "^ggml-" "" backend_suffix "${backend}")
+        # Create namespaced output name (e.g., "ggml_llama-cuda")
+        set(backend_output_name "${GGML_NAME}-${backend_suffix}")
+    else()
+        # Use original backend name
+        set(backend_output_name "${backend}")
+    endif()
+    
     if (GGML_BACKEND_DL)
         add_library(${backend} MODULE ${ARGN})
+        # Set OUTPUT_NAME to use namespace prefix (changes output file name, not target name)
+        set_target_properties(${backend} PROPERTIES OUTPUT_NAME "${backend_output_name}")
         # write the shared library to the output directory
         set_target_properties(${backend} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
         target_compile_definitions(${backend} PRIVATE GGML_BACKEND_DL)
-        add_dependencies(ggml ${backend})
+        add_dependencies(${GGML_LIB_NAME} ${backend})
         if (GGML_BACKEND_DIR)
             install(TARGETS ${backend} LIBRARY DESTINATION ${GGML_BACKEND_DIR})
         else()
@@ -247,11 +262,13 @@ function(ggml_add_backend_library backend)
         endif()
     else()
         add_library(${backend} ${ARGN})
-        target_link_libraries(ggml PUBLIC ${backend})
+        # Set OUTPUT_NAME to use namespace prefix (changes output file name, not target name)
+        set_target_properties(${backend} PROPERTIES OUTPUT_NAME "${backend_output_name}")
+        target_link_libraries(${GGML_LIB_NAME} PUBLIC ${backend})
         install(TARGETS ${backend} LIBRARY)
     endif()
 
-    target_link_libraries(${backend} PRIVATE ggml-base)
+    target_link_libraries(${backend} PRIVATE ${GGML_BASE_LIB_NAME})
     target_include_directories(${backend} PRIVATE ..)
 
     if (${BUILD_SHARED_LIBS})
@@ -260,12 +277,12 @@ function(ggml_add_backend_library backend)
     endif()
 
     if(NOT GGML_AVAILABLE_BACKENDS)
-        set(GGML_AVAILABLE_BACKENDS "${backend}"
+        set(GGML_AVAILABLE_BACKENDS "${backend_output_name}"
             CACHE INTERNAL "List of backends for cmake package")
     else()
-        list(FIND GGML_AVAILABLE_BACKENDS "${backend}" has_backend)
+        list(FIND GGML_AVAILABLE_BACKENDS "${backend_output_name}" has_backend)
         if(has_backend EQUAL -1)
-            set(GGML_AVAILABLE_BACKENDS "${GGML_AVAILABLE_BACKENDS};${backend}"
+            set(GGML_AVAILABLE_BACKENDS "${GGML_AVAILABLE_BACKENDS};${backend_output_name}"
                 CACHE INTERNAL "List of backends for cmake package")
         endif()
     endif()
@@ -274,12 +291,14 @@ endfunction()
 function(ggml_add_backend backend)
     string(TOUPPER "GGML_${backend}" backend_id)
     if (${backend_id})
+        # Subdirectory names are fixed (ggml-cuda, ggml-cpu, etc.)
+        # But library names will use namespace prefix if GGML_NAME is set
         string(TOLOWER "ggml-${backend}" backend_target)
         add_subdirectory(${backend_target})
-        message(STATUS "Including ${backend} backend")
+        message(STATUS "Including ${backend} backend from ${backend_target}")
         if (NOT GGML_BACKEND_DL)
             string(TOUPPER "GGML_USE_${backend}" backend_use)
-            target_compile_definitions(ggml PUBLIC ${backend_use})
+            target_compile_definitions(${GGML_LIB_NAME} PUBLIC ${backend_use})
         endif()
     endif()
 endfunction()
@@ -404,30 +423,30 @@ ggml_add_backend(zDNN)
 ggml_add_backend(OpenCL)
 ggml_add_backend(Hexagon)
 
-foreach (target ggml-base ggml)
+foreach (target ${GGML_BASE_LIB_NAME} ${GGML_LIB_NAME})
     target_include_directories(${target} PUBLIC    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include> $<INSTALL_INTERFACE:include>)
     target_compile_features   (${target} PRIVATE c_std_11 cxx_std_17) # don't bump
 endforeach()
 
-target_link_libraries(ggml-base PRIVATE Threads::Threads)
+target_link_libraries(${GGML_BASE_LIB_NAME} PRIVATE Threads::Threads)
 
 find_library(MATH_LIBRARY m)
 if (MATH_LIBRARY)
     if (NOT WIN32 OR NOT DEFINED ENV{ONEAPI_ROOT})
-        target_link_libraries(ggml-base PRIVATE m)
+        target_link_libraries(${GGML_BASE_LIB_NAME} PRIVATE m)
     endif()
 endif()
 
 if (CMAKE_SYSTEM_NAME MATCHES "Android")
-    target_link_libraries(ggml-base PRIVATE dl)
+    target_link_libraries(${GGML_BASE_LIB_NAME} PRIVATE dl)
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "visionOS")
-    target_compile_definitions(ggml-base PUBLIC _DARWIN_C_SOURCE)
+    target_compile_definitions(${GGML_BASE_LIB_NAME} PUBLIC _DARWIN_C_SOURCE)
 endif()
 
 if (BUILD_SHARED_LIBS)
-    foreach (target ggml-base ggml)
+    foreach (target ${GGML_BASE_LIB_NAME} ${GGML_LIB_NAME})
         set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
         target_compile_definitions(${target} PRIVATE GGML_BUILD)
         target_compile_definitions(${target} PUBLIC  GGML_SHARED)

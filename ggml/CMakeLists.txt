@@ -7,6 +7,21 @@ set(GGML_VERSION_MINOR 9)
 set(GGML_VERSION_PATCH 4)
 set(GGML_VERSION_BASE "${GGML_VERSION_MAJOR}.${GGML_VERSION_MINOR}.${GGML_VERSION_PATCH}")
 
+### GGML Name (for namespacing)
+# If GGML_NAME is set, use it as a prefix for library names
+# This allows building multiple versions of GGML with different namespaces
+# Example: GGML_NAME=ggml_llama will create libraries named ggml_llama, ggml_llama-base, etc.
+if (DEFINED GGML_NAME)
+    set(GGML_LIB_NAME "${GGML_NAME}")
+    set(GGML_BASE_LIB_NAME "${GGML_NAME}-base")
+    message(STATUS "GGML_NAME is set to: ${GGML_NAME}")
+    message(STATUS "Library names will be: ${GGML_LIB_NAME}, ${GGML_BASE_LIB_NAME}")
+else()
+    set(GGML_LIB_NAME "ggml")
+    set(GGML_BASE_LIB_NAME "ggml-base")
+    message(STATUS "GGML_NAME not set, using default library names: ${GGML_LIB_NAME}, ${GGML_BASE_LIB_NAME}")
+endif()
+
 find_program(GIT_EXE NAMES git git.exe NO_CMAKE_FIND_ROOT_PATH)
 if(GIT_EXE)
     # Get current git commit hash
@@ -319,12 +334,12 @@ set(GGML_PUBLIC_HEADERS
     include/ggml-webgpu.h
     include/gguf.h)
 
-set_target_properties(ggml PROPERTIES PUBLIC_HEADER "${GGML_PUBLIC_HEADERS}")
+set_target_properties(${GGML_LIB_NAME} PROPERTIES PUBLIC_HEADER "${GGML_PUBLIC_HEADERS}")
 #if (GGML_METAL)
-#    set_target_properties(ggml PROPERTIES RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/ggml-metal.metal")
+#    set_target_properties(${GGML_LIB_NAME} PROPERTIES RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/ggml-metal.metal")
 #endif()
-install(TARGETS ggml LIBRARY PUBLIC_HEADER)
-install(TARGETS ggml-base LIBRARY)
+install(TARGETS ${GGML_LIB_NAME} LIBRARY PUBLIC_HEADER)
+install(TARGETS ${GGML_BASE_LIB_NAME} LIBRARY)
 
 if (GGML_STANDALONE)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ggml.pc.in
@@ -385,7 +400,7 @@ write_basic_package_version_file(
     VERSION ${GGML_INSTALL_VERSION}
     COMPATIBILITY SameMajorVersion)
 
-target_compile_definitions(ggml-base PRIVATE
+target_compile_definitions(${GGML_BASE_LIB_NAME} PRIVATE
     GGML_VERSION="${GGML_INSTALL_VERSION}"
     GGML_COMMIT="${GGML_BUILD_COMMIT}"
 )
@@ -412,8 +427,8 @@ if (MSVC)
         endif()
     endfunction()
 
-    disable_msvc_warnings(ggml-base)
-    disable_msvc_warnings(ggml)
+    disable_msvc_warnings(${GGML_BASE_LIB_NAME})
+    disable_msvc_warnings(${GGML_LIB_NAME})
     disable_msvc_warnings(ggml-cpu)
     disable_msvc_warnings(ggml-cpu-x64)
     disable_msvc_warnings(ggml-cpu-sse42)

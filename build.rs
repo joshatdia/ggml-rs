@@ -282,7 +282,7 @@ fn main() {
     println!("cargo:INCLUDE={}", ggml_root.join("include").display());
     
     // Determine library base name based on namespace (for linking)
-    let link_base_name = if cfg!(feature = "namespace-llama") {
+    let requested_base_name = if cfg!(feature = "namespace-llama") {
         "ggml_llama"
     } else if cfg!(feature = "namespace-whisper") {
         "ggml_whisper"
@@ -290,7 +290,57 @@ fn main() {
         "ggml"  // Default: no namespace
     };
     
-    // Link to shared libraries (not static) - using namespace-aware names
+    // List all available libraries in lib_dir for diagnostics
+    println!("[LINK] Library directory: {}", lib_dir.display());
+    println!("[LINK] Library directory exists: {}", lib_dir.exists());
+    
+    // Check if namespace libraries exist - if not, fall back to standard names
+    let mut link_base_name = requested_base_name;
+    if lib_dir.exists() {
+        println!("[LINK] Available libraries in {}:", lib_dir.display());
+        if let Ok(entries) = std::fs::read_dir(&lib_dir) {
+            let mut found_libs = Vec::new();
+            for entry in entries.flatten() {
+                let file_name = entry.file_name();
+                let file_name_str = file_name.to_string_lossy();
+                found_libs.push(file_name_str.to_string());
+                println!("[LINK]   - {}", file_name_str);
+            }
+            if found_libs.is_empty() {
+                println!("[LINK] WARNING: No libraries found in library directory!");
+            }
+            
+            // Check if namespace libraries exist - if not, fall back to standard names
+            if requested_base_name != "ggml" {
+                let namespace_lib = if cfg!(target_os = "windows") {
+                    format!("{}.lib", requested_base_name)
+                } else if cfg!(target_os = "macos") {
+                    format!("lib{}.dylib", requested_base_name)
+                } else {
+                    format!("lib{}.so", requested_base_name)
+                };
+                
+                if !found_libs.iter().any(|f| f.contains(requested_base_name)) {
+                    eprintln!("cargo:warning=⚠️  NAMESPACE LIBRARY NOT FOUND: {}", namespace_lib);
+                    eprintln!("cargo:warning=⚠️  GGML's CMakeLists.txt does not support GGML_NAME");
+                    eprintln!("cargo:warning=⚠️  Libraries will be built as 'ggml', not '{}'", requested_base_name);
+                    eprintln!("cargo:warning=⚠️  Falling back to standard library names");
+                    eprintln!("cargo:warning=⚠️  To fix: patch ggml/CMakeLists.txt to support GGML_NAME");
+                    // Fall back to standard library names
+                    link_base_name = "ggml";
+                } else {
+                    println!("[LINK] ✓ Found namespace library: {}", namespace_lib);
+                }
+            }
+        } else {
+            eprintln!("cargo:warning=Failed to read library directory: {}", lib_dir.display());
+        }
+    } else {
+        eprintln!("cargo:warning=Library directory does not exist: {}", lib_dir.display());
+    }
+    
+    // Link to shared libraries (not static) - using namespace-aware names (or fallback)
+    println!("[LINK] Linking to libraries with base name: {}", link_base_name);
     println!("cargo:rustc-link-lib=dylib={}", link_base_name);
     println!("cargo:rustc-link-lib=dylib={}-base", link_base_name);
     println!("cargo:rustc-link-lib=dylib={}-cpu", link_base_name);

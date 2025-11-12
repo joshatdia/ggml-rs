@@ -582,70 +582,86 @@ fn patch_ggml_config_cmake(cmake_build_dir: &PathBuf, install_prefix: &PathBuf, 
             all_targets.push(format!("ggml::{}-{}", namespace, backend));
         }
         
-        // STEP 1: Remove ALL duplicate add_library blocks FIRST (before adding guards)
+        // STEP 1: Remove ALL duplicate add_library blocks in a SINGLE pass
         // This ensures we only have one definition per target
         eprintln!("cargo:warning=[PATCH] Step 1: Removing duplicate add_library blocks...");
+        
+        // Track which targets we've seen (keep first occurrence, skip duplicates)
+        let mut seen_targets = std::collections::HashSet::new();
+        let mut new_lines = Vec::new();
+        let mut in_block = false;
+        let mut paren_count = 0;
+        let mut skip_this_block = false;
+        let mut current_target: Option<String> = None;
+        
+        for line in patched.lines() {
+            // Check if this line starts an add_library for any of our targets
+            let mut found_target: Option<String> = None;
+            for target_name in &all_targets {
+                let pattern = format!("add_library({}", target_name);
+                if line.contains(&pattern) && line.contains("IMPORTED") {
+                    found_target = Some(target_name.clone());
+                    break;
+                }
+            }
+            
+            if let Some(target) = found_target {
+                if seen_targets.contains(&target) {
+                    // This is a duplicate - skip this entire block
+                    eprintln!("cargo:warning=[PATCH]   Removing duplicate block for: {}", target);
+                    skip_this_block = true;
+                    current_target = Some(target.clone());
+                    paren_count = line.matches('(').count() as i32 - line.matches(')').count() as i32;
+                    continue;
+                } else {
+                    // First occurrence - keep it
+                    seen_targets.insert(target.clone());
+                    current_target = Some(target.clone());
+                    in_block = true;
+                    paren_count = line.matches('(').count() as i32 - line.matches(')').count() as i32;
+                    new_lines.push(line.to_string());
+                    continue;
+                }
+            }
+            
+            if skip_this_block {
+                // Skip lines until we close the block
+                paren_count += line.matches('(').count() as i32;
+                paren_count -= line.matches(')').count() as i32;
+                if paren_count <= 0 {
+                    skip_this_block = false;
+                    current_target = None;
+                    paren_count = 0;
+                }
+                continue;
+            }
+            
+            if in_block {
+                // We're inside the add_library block we're keeping
+                new_lines.push(line.to_string());
+                paren_count += line.matches('(').count() as i32;
+                paren_count -= line.matches(')').count() as i32;
+                if paren_count <= 0 {
+                    in_block = false;
+                    current_target = None;
+                    paren_count = 0;
+                }
+            } else {
+                // Normal line, not in any block
+                new_lines.push(line.to_string());
+            }
+        }
+        
+        patched = new_lines.join("\n");
+        
+        // Verify deduplication worked
         for target_name in &all_targets {
             let pattern = format!("add_library({}", target_name);
             let count = patched.matches(&pattern).count();
             if count > 1 {
-                eprintln!("cargo:warning=[PATCH] ⚠ Found {} duplicate add_library calls for {}, removing duplicates...", count, target_name);
-                
-                // Parse the file and keep only the FIRST complete add_library block for this target
-                let mut new_lines = Vec::new();
-                let mut seen_target = false;
-                let mut in_block = false;
-                let mut paren_count = 0;
-                let mut skip_this_block = false;
-                
-                for line in patched.lines() {
-                    let is_target_line = line.contains(&pattern) && line.contains("IMPORTED");
-                    
-                    if is_target_line {
-                        if seen_target {
-                            // This is a duplicate - skip this entire block
-                            eprintln!("cargo:warning=[PATCH]   Removing duplicate block starting at: {}", line.trim());
-                            skip_this_block = true;
-                            paren_count = line.matches('(').count() as i32 - line.matches(')').count() as i32;
-                            continue;
-                        } else {
-                            // First occurrence - keep it
-                            seen_target = true;
-                            in_block = true;
-                            new_lines.push(line.to_string());
-                            paren_count = line.matches('(').count() as i32 - line.matches(')').count() as i32;
-                            continue;
-                        }
-                    }
-                    
-                    if skip_this_block {
-                        // Skip lines until we close the block
-                        paren_count += line.matches('(').count() as i32;
-                        paren_count -= line.matches(')').count() as i32;
-                        if paren_count <= 0 {
-                            skip_this_block = false;
-                            paren_count = 0;
-                        }
-                        continue;
-                    }
-                    
-                    if in_block {
-                        // We're inside the add_library block we're keeping
-                        new_lines.push(line.to_string());
-                        paren_count += line.matches('(').count() as i32;
-                        paren_count -= line.matches(')').count() as i32;
-                        if paren_count <= 0 {
-                            in_block = false;
-                            paren_count = 0;
-                        }
-                    } else {
-                        // Normal line, not in any block
-                        new_lines.push(line.to_string());
-                    }
-                }
-                
-                patched = new_lines.join("\n");
-                eprintln!("cargo:warning=[PATCH] ✓ Removed duplicates for {}", target_name);
+                eprintln!("cargo:warning=[PATCH] ⚠ WARNING: Still found {} duplicate add_library calls for {} after deduplication!", count, target_name);
+            } else if count == 1 {
+                eprintln!("cargo:warning=[PATCH] ✓ Verified: {} has exactly one add_library call", target_name);
             }
         }
         
@@ -716,17 +732,6 @@ fn patch_ggml_config_cmake(cmake_build_dir: &PathBuf, install_prefix: &PathBuf, 
         }
         
         patched = new_lines.join("\n");
-        
-        // STEP 3: Final verification - check for any remaining duplicates
-        for target_name in &all_targets {
-            let pattern = format!("add_library({}", target_name);
-            let count = patched.matches(&pattern).count();
-            if count > 1 {
-                eprintln!("cargo:warning=[PATCH] ⚠ ERROR: Still found {} duplicate add_library calls for {} after deduplication!", count, target_name);
-            } else if count == 1 {
-                eprintln!("cargo:warning=[PATCH] ✓ Verified: {} has exactly one add_library call", target_name);
-            }
-        }
         
         // Note: Target names (ggml::ggml-base) stay unchanged for compatibility.
         // The IMPORTED_LOCATION will point to the namespaced library file because

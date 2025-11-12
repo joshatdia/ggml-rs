@@ -8,7 +8,13 @@ use std::path::PathBuf;
 
 fn main() {
     // Verify features are enabled
+    println!("[BUILD] ========================================");
     println!("[BUILD] Starting ggml-rs build script");
+    println!("[BUILD] ========================================");
+    println!("[BUILD] CARGO_MANIFEST_DIR: {:?}", env::var("CARGO_MANIFEST_DIR"));
+    println!("[BUILD] OUT_DIR: {:?}", env::var("OUT_DIR"));
+    println!("[BUILD] TARGET: {:?}", env::var("TARGET"));
+    println!("[BUILD] PROFILE: {:?}", env::var("PROFILE"));
     println!("[BUILD] CUDA feature enabled: {}", cfg!(feature = "cuda"));
     println!("[BUILD] Metal feature enabled: {}", cfg!(feature = "metal"));
     println!("[BUILD] Vulkan feature enabled: {}", cfg!(feature = "vulkan"));
@@ -95,8 +101,17 @@ fn main() {
     let ggml_include = ggml_root.join("include");
     println!("cargo:INCLUDE={}", ggml_include.display());
     
-    // Stop if we're on docs.rs (don't build the library, but variables are already exported)
+    // Stop if we're on docs.rs (don't build the library, but export placeholder variables)
     if env::var("DOCS_RS").is_ok() {
+        println!("[BUILD] Running on docs.rs - exporting placeholder variables");
+        // Export placeholder variables so dependent crates don't fail
+        let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+        println!("cargo:GGML_LLAMA_LIB_DIR={}", out_dir.join("llama").join("lib").display());
+        println!("cargo:GGML_LLAMA_BIN_DIR={}", out_dir.join("llama").join("bin").display());
+        println!("cargo:GGML_LLAMA_BASENAME=ggml_llama");
+        println!("cargo:GGML_WHISPER_LIB_DIR={}", out_dir.join("whisper").join("lib").display());
+        println!("cargo:GGML_WHISPER_BIN_DIR={}", out_dir.join("whisper").join("bin").display());
+        println!("cargo:GGML_WHISPER_BASENAME=ggml_whisper");
         return;
     }
 
@@ -112,17 +127,46 @@ fn main() {
     
     // Export environment variables for both variants so consumers can find them
     // Consumers will link to their own variant using these variables
-    if let Ok((llama_lib_dir, llama_bin_dir)) = llama_result {
-        println!("cargo:GGML_LLAMA_LIB_DIR={}", llama_lib_dir.display());
-        println!("cargo:GGML_LLAMA_BIN_DIR={}", llama_bin_dir.display());
-        println!("cargo:GGML_LLAMA_BASENAME=ggml_llama");
+    // Note: Cargo automatically prefixes these with DEP_GGML_RS_, so:
+    // cargo:GGML_LLAMA_LIB_DIR becomes DEP_GGML_RS_GGML_LLAMA_LIB_DIR
+    match llama_result {
+        Ok((llama_lib_dir, llama_bin_dir)) => {
+            println!("[BUILD] Exporting llama variant variables:");
+            println!("[BUILD]   GGML_LLAMA_LIB_DIR={}", llama_lib_dir.display());
+            println!("[BUILD]   GGML_LLAMA_BIN_DIR={}", llama_bin_dir.display());
+            println!("cargo:GGML_LLAMA_LIB_DIR={}", llama_lib_dir.display());
+            println!("cargo:GGML_LLAMA_BIN_DIR={}", llama_bin_dir.display());
+            println!("cargo:GGML_LLAMA_BASENAME=ggml_llama");
+        }
+        Err(e) => {
+            eprintln!("cargo:warning=Failed to build llama variant: {}", e);
+            eprintln!("cargo:warning=LLAMA variant variables will not be available");
+        }
     }
     
-    if let Ok((whisper_lib_dir, whisper_bin_dir)) = whisper_result {
-        println!("cargo:GGML_WHISPER_LIB_DIR={}", whisper_lib_dir.display());
-        println!("cargo:GGML_WHISPER_BIN_DIR={}", whisper_bin_dir.display());
-        println!("cargo:GGML_WHISPER_BASENAME=ggml_whisper");
+    match whisper_result {
+        Ok((whisper_lib_dir, whisper_bin_dir)) => {
+            println!("[BUILD] Exporting whisper variant variables:");
+            println!("[BUILD]   GGML_WHISPER_LIB_DIR={}", whisper_lib_dir.display());
+            println!("[BUILD]   GGML_WHISPER_BIN_DIR={}", whisper_bin_dir.display());
+            println!("cargo:GGML_WHISPER_LIB_DIR={}", whisper_lib_dir.display());
+            println!("cargo:GGML_WHISPER_BIN_DIR={}", whisper_bin_dir.display());
+            println!("cargo:GGML_WHISPER_BASENAME=ggml_whisper");
+        }
+        Err(e) => {
+            eprintln!("cargo:warning=Failed to build whisper variant: {}", e);
+            eprintln!("cargo:warning=WHISPER variant variables will not be available");
+        }
     }
+    
+    println!("[BUILD] Build script completed. Variables exported:");
+    println!("[BUILD]   DEP_GGML_RS_GGML_LLAMA_LIB_DIR (if llama variant built)");
+    println!("[BUILD]   DEP_GGML_RS_GGML_LLAMA_BIN_DIR (if llama variant built)");
+    println!("[BUILD]   DEP_GGML_RS_GGML_LLAMA_BASENAME (if llama variant built)");
+    println!("[BUILD]   DEP_GGML_RS_GGML_WHISPER_LIB_DIR (if whisper variant built)");
+    println!("[BUILD]   DEP_GGML_RS_GGML_WHISPER_BIN_DIR (if whisper variant built)");
+    println!("[BUILD]   DEP_GGML_RS_GGML_WHISPER_BASENAME (if whisper variant built)");
+    println!("[BUILD]   DEP_GGML_RS_INCLUDE (always)");
     
     // IMPORTANT: Do NOT emit cargo:rustc-link-lib here
     // Each consumer crate (llama-cpp-rs, whisper-rs) will link to its own variant

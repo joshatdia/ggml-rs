@@ -4,12 +4,13 @@ This guide explains how to configure dependent crates (like `llama-cpp-rs` and `
 
 ## Overview
 
-When using `ggml-rs` with namespacing, each dependent crate should use a different namespace to avoid symbol conflicts. This allows multiple GGML-based crates to coexist in the same application.
+`ggml-rs` **automatically builds BOTH variants** (llama and whisper) unconditionally. This ensures both sets of libraries are available regardless of which dependent crate builds first, avoiding Cargo's feature unification issues.
 
-## Namespace Features
+Each dependent crate links to its own variant using environment variables exported by `ggml-rs`.
 
-- `namespace-llama` - For llama.cpp-based crates (e.g., `llama-cpp-rs`)
-- `namespace-whisper` - For whisper.cpp-based crates (e.g., `whisper-rs`)
+## Important: No Namespace Features Needed
+
+**You do NOT need to enable namespace features in `ggml-rs`**. The crate builds both variants automatically.
 
 ## Step 1: Update Cargo.toml
 
@@ -17,7 +18,7 @@ When using `ggml-rs` with namespacing, each dependent crate should use a differe
 
 ```toml
 [dependencies]
-ggml-rs = { path = "../ggml-rs", features = ["cuda", "namespace-llama"] }
+ggml-rs = { path = "../ggml-rs", features = ["cuda"] }  # NO namespace feature needed!
 
 [features]
 default = []
@@ -28,76 +29,127 @@ cuda = ["ggml-rs/cuda"]  # Propagate cuda feature to ggml-rs
 
 ```toml
 [dependencies]
-ggml-rs = { path = "../ggml-rs", features = ["cuda", "namespace-whisper"] }
+ggml-rs = { path = "../ggml-rs", features = ["cuda"] }  # NO namespace feature needed!
 
 [features]
 default = []
 cuda = ["ggml-rs/cuda"]  # Propagate cuda feature to ggml-rs
 ```
 
+**Note:** Both crates use the same `ggml-rs` dependency with the same features. `ggml-rs` builds both variants internally.
+
 ## Step 2: Update build.rs
 
-### Important: Do NOT Link to GGML Libraries Directly
+### Important: Link to Your Own Variant
 
-`ggml-rs` already handles all linking automatically. Your `build.rs` should **NOT** include lines like:
-```rust
-// ❌ DON'T DO THIS - ggml-rs handles it
-println!("cargo:rustc-link-lib=dylib=ggml");
-println!("cargo:rustc-link-lib=dylib=ggml-cuda");
-```
+`ggml-rs` builds both variants but **does NOT auto-link**. Each dependent crate must link to its own variant.
 
-### Correct Approach: Use Environment Variables
-
-Your `build.rs` should only use the environment variables provided by `ggml-rs`:
+### For llama-cpp-rs:
 
 ```rust
 use std::env;
-use std::path::PathBuf;
 
 fn main() {
-    #[cfg(feature = "use-shared-ggml")]
+    // Get environment variables from ggml-rs for the llama variant
+    let lib_dir = env::var("DEP_GGML_RS_GGML_LLAMA_LIB_DIR")
+        .expect("GGML_LLAMA_LIB_DIR not set. Make sure ggml-rs is in dependencies.");
+    
+    let bin_dir = env::var("DEP_GGML_RS_GGML_LLAMA_BIN_DIR")
+        .expect("GGML_LLAMA_BIN_DIR not set. Make sure ggml-rs is in dependencies.");
+    
+    let base_name = env::var("DEP_GGML_RS_GGML_LLAMA_BASENAME")
+        .unwrap_or_else(|_| "ggml_llama".to_string());
+    
+    // Link to llama variant libraries
+    println!("cargo:rustc-link-search=native={}", lib_dir);
+    println!("cargo:rustc-link-lib=dylib={}", base_name);  // -> ggml_llama
+    println!("cargo:rustc-link-lib=dylib={}-base", base_name);  // -> ggml_llama-base
+    println!("cargo:rustc-link-lib=dylib={}-cpu", base_name);  // -> ggml_llama-cpu
+    
+    // Link to CUDA if enabled
+    #[cfg(feature = "cuda")]
     {
-        // Get environment variables from ggml-rs
-        let root = env::var("DEP_GGML_RS_ROOT")
-            .expect("DEP_GGML_RS_ROOT not set. Make sure ggml-rs is in dependencies with the correct namespace feature.");
-        
-        let include = env::var("DEP_GGML_RS_INCLUDE")
-            .expect("DEP_GGML_RS_INCLUDE not set. Make sure ggml-rs is properly configured.");
-        
-        let lib_dir = env::var("DEP_GGML_RS_LIB_DIR")
-            .expect("DEP_GGML_RS_LIB_DIR not set. Make sure ggml-rs is properly configured.");
-        
-        // Configure CMake to use shared GGML
-        // The library names will be automatically namespaced:
-        // - For namespace-llama: ggml_llama, ggml_llama-base, ggml_llama-cuda, etc.
-        // - For namespace-whisper: ggml_whisper, ggml_whisper-base, ggml_whisper-cuda, etc.
-        
-        // Add library search path (ggml-rs already links the libraries)
-        println!("cargo:rustc-link-search=native={}", lib_dir);
-        
-        // Configure CMake to find GGML
-        // ... your CMake configuration ...
+        println!("cargo:rustc-link-lib=dylib={}-cuda", base_name);  // -> ggml_llama-cuda
     }
+    
+    // Export runtime directory for DLL copying (Windows)
+    println!("cargo:rustc-env=GGML_LLAMA_RUNTIME_DIR={}", bin_dir);
+    
+    // Configure CMake to use shared GGML
+    // ... your CMake configuration ...
 }
 ```
 
-## Step 3: Verify Library Names
+### For whisper-rs:
 
-When `ggml-rs` is built with a namespace feature, it creates libraries with namespaced names:
+```rust
+use std::env;
 
-### With `namespace-llama`:
+fn main() {
+    // Get environment variables from ggml-rs for the whisper variant
+    let lib_dir = env::var("DEP_GGML_RS_GGML_WHISPER_LIB_DIR")
+        .expect("GGML_WHISPER_LIB_DIR not set. Make sure ggml-rs is in dependencies.");
+    
+    let bin_dir = env::var("DEP_GGML_RS_GGML_WHISPER_BIN_DIR")
+        .expect("GGML_WHISPER_BIN_DIR not set. Make sure ggml-rs is in dependencies.");
+    
+    let base_name = env::var("DEP_GGML_RS_GGML_WHISPER_BASENAME")
+        .unwrap_or_else(|_| "ggml_whisper".to_string());
+    
+    // Link to whisper variant libraries
+    println!("cargo:rustc-link-search=native={}", lib_dir);
+    println!("cargo:rustc-link-lib=dylib={}", base_name);  // -> ggml_whisper
+    println!("cargo:rustc-link-lib=dylib={}-base", base_name);  // -> ggml_whisper-base
+    println!("cargo:rustc-link-lib=dylib={}-cpu", base_name);  // -> ggml_whisper-cpu
+    
+    // Link to CUDA if enabled
+    #[cfg(feature = "cuda")]
+    {
+        println!("cargo:rustc-link-lib=dylib={}-cuda", base_name);  // -> ggml_whisper-cuda
+    }
+    
+    // Export runtime directory for DLL copying (Windows)
+    println!("cargo:rustc-env=GGML_WHISPER_RUNTIME_DIR={}", bin_dir);
+    
+    // Configure CMake to use shared GGML
+    // ... your CMake configuration ...
+}
+```
+
+## Step 3: Environment Variables Available
+
+`ggml-rs` exports the following environment variables (accessible via `DEP_GGML_RS_*`):
+
+### For llama variant:
+- `DEP_GGML_RS_GGML_LLAMA_LIB_DIR` - Path to llama variant library directory
+- `DEP_GGML_RS_GGML_LLAMA_BIN_DIR` - Path to llama variant binary directory (DLLs)
+- `DEP_GGML_RS_GGML_LLAMA_BASENAME` - Base library name: `ggml_llama`
+
+### For whisper variant:
+- `DEP_GGML_RS_GGML_WHISPER_LIB_DIR` - Path to whisper variant library directory
+- `DEP_GGML_RS_GGML_WHISPER_BIN_DIR` - Path to whisper variant binary directory (DLLs)
+- `DEP_GGML_RS_GGML_WHISPER_BASENAME` - Base library name: `ggml_whisper`
+
+### Common:
+- `DEP_GGML_RS_INCLUDE` - Path to GGML include directory (same for both variants)
+
+## Step 4: Verify Library Names
+
+`ggml-rs` builds both variants automatically. The libraries have namespaced names:
+
+### llama variant:
 - **Linking files (.lib on Windows, .a/.so on Unix):**
   - `ggml_llama.lib`, `ggml_llama-base.lib`, `ggml_llama-cpu.lib`, `ggml_llama-cuda.lib`
 - **Runtime files (.dll on Windows, .so/.dylib on Unix):**
   - `ggml_llama.dll`, `ggml_llama-base.dll`, `ggml_llama-cpu.dll`, `ggml_llama-cuda.dll`
 
-### With `namespace-whisper`:
+### whisper variant:
 - **Linking files (.lib on Windows, .a/.so on Unix):**
   - `ggml_whisper.lib`, `ggml_whisper-base.lib`, `ggml_whisper-cpu.lib`, `ggml_whisper-cuda.lib`
 - **Runtime files (.dll on Windows, .so/.dylib on Unix):**
   - `ggml_whisper.dll`, `ggml_whisper-base.dll`, `ggml_whisper-cpu.dll`, `ggml_whisper-cuda.dll`
 
-## Step 4: Check Your CMake Configuration
+## Step 5: Check Your CMake Configuration
 
 If your crate uses CMake to build additional native code, make sure it uses the shared GGML library:
 
@@ -117,19 +169,19 @@ else()
 endif()
 ```
 
-## Step 5: Runtime DLL Copying
+## Step 6: Runtime DLL Copying
 
-`ggml-rs` automatically copies the namespaced DLLs to `target/debug/` or `target/release/` when built. You don't need to do anything extra.
+Each dependent crate should copy its own variant's DLLs to the target directory. `ggml-rs` provides the binary directory path via environment variables.
 
-However, if you need to copy DLLs manually or for distribution:
+### For llama-cpp-rs:
 
 ```rust
-// In your build.rs or a separate script
+// In your build.rs
 use std::fs;
 use std::path::PathBuf;
 
-fn copy_ggml_dlls() {
-    let lib_dir = env::var("DEP_GGML_RS_LIB_DIR").unwrap();
+fn copy_llama_dlls() {
+    let bin_dir = env::var("DEP_GGML_RS_GGML_LLAMA_BIN_DIR").unwrap();
     let target_dir = PathBuf::from(env::var("OUT_DIR").unwrap())
         .parent().unwrap()  // out/
         .parent().unwrap()  // build/
@@ -137,9 +189,29 @@ fn copy_ggml_dlls() {
         .parent().unwrap()  // target/
         .join(env::var("PROFILE").unwrap());
     
-    // Copy namespaced DLLs
-    // The names will be: ggml_llama*.dll or ggml_whisper*.dll
-    // depending on which namespace feature is enabled
+    // Copy all ggml_llama*.dll files from bin_dir to target_dir
+    // ... implementation ...
+}
+```
+
+### For whisper-rs:
+
+```rust
+// In your build.rs
+use std::fs;
+use std::path::PathBuf;
+
+fn copy_whisper_dlls() {
+    let bin_dir = env::var("DEP_GGML_RS_GGML_WHISPER_BIN_DIR").unwrap();
+    let target_dir = PathBuf::from(env::var("OUT_DIR").unwrap())
+        .parent().unwrap()  // out/
+        .parent().unwrap()  // build/
+        .parent().unwrap()  // debug/
+        .parent().unwrap()  // target/
+        .join(env::var("PROFILE").unwrap());
+    
+    // Copy all ggml_whisper*.dll files from bin_dir to target_dir
+    // ... implementation ...
 }
 ```
 
@@ -147,9 +219,9 @@ fn copy_ggml_dlls() {
 
 Before building your dependent crate, verify:
 
-- [ ] `ggml-rs` is in dependencies with the correct namespace feature
-- [ ] Your `build.rs` does NOT link to GGML libraries directly
-- [ ] Your `build.rs` uses `DEP_GGML_RS_*` environment variables
+- [ ] `ggml-rs` is in dependencies (NO namespace features needed)
+- [ ] Your `build.rs` links to the correct variant (llama or whisper)
+- [ ] Your `build.rs` uses `DEP_GGML_RS_GGML_LLAMA_*` or `DEP_GGML_RS_GGML_WHISPER_*` environment variables
 - [ ] CMake configuration (if any) uses the namespaced library names
 - [ ] No hardcoded references to `ggml`, `ggml-base`, `ggml-cuda`, etc. in your code
 
@@ -158,7 +230,7 @@ Before building your dependent crate, verify:
 ```toml
 # Cargo.toml
 [dependencies]
-ggml-rs = { path = "../ggml-rs", features = ["cuda", "namespace-llama"] }
+ggml-rs = { path = "../ggml-rs", features = ["cuda"] }  # NO namespace feature!
 
 [features]
 default = []
@@ -168,43 +240,62 @@ use-shared-ggml = []
 
 ```rust
 // build.rs
+use std::env;
+
 fn main() {
     #[cfg(feature = "use-shared-ggml")]
     {
+        // Get llama variant paths
         let include = env::var("DEP_GGML_RS_INCLUDE").unwrap();
-        let lib_dir = env::var("DEP_GGML_RS_LIB_DIR").unwrap();
+        let lib_dir = env::var("DEP_GGML_RS_GGML_LLAMA_LIB_DIR").unwrap();
+        let base_name = env::var("DEP_GGML_RS_GGML_LLAMA_BASENAME").unwrap_or_else(|_| "ggml_llama".to_string());
+        
+        // Link to llama variant
+        println!("cargo:rustc-link-search=native={}", lib_dir);
+        println!("cargo:rustc-link-lib=dylib={}", base_name);
+        println!("cargo:rustc-link-lib=dylib={}-base", base_name);
+        println!("cargo:rustc-link-lib=dylib={}-cpu", base_name);
+        
+        #[cfg(feature = "cuda")]
+        {
+            println!("cargo:rustc-link-lib=dylib={}-cuda", base_name);
+        }
         
         // Configure CMake
         let mut config = cmake::Config::new(".");
         config.define("GGML_INCLUDE_DIR", include);
         config.define("GGML_LIB_DIR", lib_dir);
         // ... rest of CMake configuration
-        
-        // ggml-rs already handles linking, so we don't need:
-        // println!("cargo:rustc-link-lib=dylib=ggml_llama");
     }
 }
 ```
 
 ## Troubleshooting
 
-### Error: "cannot find -lggml"
-This means you're trying to link to `ggml` directly. Remove any direct linking and let `ggml-rs` handle it.
+### Error: "cannot find -lggml_llama" or "cannot find -lggml_whisper"
+- Check that `DEP_GGML_RS_GGML_LLAMA_LIB_DIR` (or `GGML_WHISPER_LIB_DIR`) is set
+- Verify that `ggml-rs` built successfully (check build output)
+- Make sure you're linking to the correct variant (llama vs whisper)
 
 ### Error: "undefined reference to ggml_*"
-This means the namespace feature isn't enabled. Make sure you have `namespace-llama` or `namespace-whisper` in your `ggml-rs` dependency features.
+- Make sure you're linking to all required libraries (base, cpu, cuda if enabled)
+- Check that the library names match: `ggml_llama`, `ggml_llama-base`, etc.
 
 ### Error: "multiple definition of ggml_*"
-This means two crates are using the same namespace. Make sure:
-- `llama-cpp-rs` uses `namespace-llama`
-- `whisper-rs` uses `namespace-whisper`
-- They don't both use the same namespace
+- This shouldn't happen with namespacing, but if it does:
+  - Make sure `llama-cpp-rs` links to `ggml_llama*` libraries
+  - Make sure `whisper-rs` links to `ggml_whisper*` libraries
+  - Verify both variants were built (check `ggml-rs` build output)
+
+### Error: "GGML_LLAMA_LIB_DIR not set"
+- Make sure `ggml-rs` is in your dependencies
+- Rebuild `ggml-rs` first: `cargo build -p ggml-rs`
+- The environment variable name is `DEP_GGML_RS_GGML_LLAMA_LIB_DIR` (with `DEP_GGML_RS_` prefix)
 
 ## Summary
 
-1. **Add namespace feature** to `ggml-rs` dependency in `Cargo.toml`
-2. **Don't link directly** - let `ggml-rs` handle all linking
-3. **Use environment variables** - `DEP_GGML_RS_*` variables are automatically set
-4. **Verify library names** - check that namespaced libraries are created
-5. **Test coexistence** - build both crates and verify they work together
+1. **Add `ggml-rs` dependency** (NO namespace features needed - both variants build automatically)
+2. **Link to your variant** - Use `DEP_GGML_RS_GGML_LLAMA_*` or `DEP_GGML_RS_GGML_WHISPER_*` variables
+3. **Copy DLLs** - Copy your variant's DLLs to the target directory for runtime
+4. **Test coexistence** - Build both crates and verify they work together without conflicts
 

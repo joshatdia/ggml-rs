@@ -486,6 +486,14 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
             }
         };
         
+        // Check if file already has the correct namespace - if so, just remove duplicates and skip patching
+        let already_patched = content.contains(&format!("{}-cpu", namespace)) || 
+                              content.contains(&format!("find_library(GGML_LIBRARY {}", namespace));
+        
+        if already_patched {
+            eprintln!("cargo:warning=[PATCH] File already contains namespace '{}', checking for duplicates...", namespace);
+        }
+        
         // Replace library names with namespaced versions
         let mut patched = content.clone();
         
@@ -561,6 +569,60 @@ fn patch_ggml_config_cmake(destination: &PathBuf, namespace: &str) {
         
         // Restore "ggml::"
         patched = patched.replace(protected_marker, "ggml::");
+        
+        // CRITICAL: Remove duplicate add_library calls for imported targets
+        // Pattern: add_library(ggml::ggml_whisper-cpu ...) might appear multiple times
+        let backend_libs = vec!["cpu", "cuda", "metal", "vulkan", "hip", "blas", "sycl"];
+        let mut all_targets = vec![
+            format!("ggml::{}", namespace),
+            format!("ggml::{}-base", namespace),
+        ];
+        for backend in &backend_libs {
+            all_targets.push(format!("ggml::{}-{}", namespace, backend));
+        }
+        
+        // Remove duplicates for each target
+        for target_name in &all_targets {
+            let pattern = format!("add_library({}", target_name);
+            let count = patched.matches(&pattern).count();
+            if count > 1 {
+                eprintln!("cargo:warning=[PATCH] ⚠ Found {} duplicate add_library calls for {}, removing...", count, target_name);
+                // Keep only the first occurrence, remove the rest
+                let mut first = true;
+                let mut new_lines = Vec::new();
+                let mut skip_block = false;
+                let mut paren_count = 0;
+                
+                for line in patched.lines() {
+                    if line.contains(&pattern) && line.contains("IMPORTED") {
+                        if first {
+                            first = false;
+                            new_lines.push(line);
+                            skip_block = false;
+                            // Count parentheses in this line
+                            paren_count = line.matches('(').count() - line.matches(')').count();
+                        } else {
+                            eprintln!("cargo:warning=[PATCH]   Removing duplicate: {}", line);
+                            skip_block = true;
+                            paren_count = line.matches('(').count() - line.matches(')').count();
+                            continue;
+                        }
+                    } else if skip_block {
+                        // Count parentheses to know when the block ends
+                        paren_count += line.matches('(').count();
+                        paren_count -= line.matches(')').count();
+                        if paren_count <= 0 {
+                            skip_block = false;
+                            paren_count = 0;
+                        }
+                        continue;
+                    } else {
+                        new_lines.push(line);
+                    }
+                }
+                patched = new_lines.join("\n");
+            }
+        }
         
         // Note: Target names (ggml::ggml-base) stay unchanged for compatibility.
         // The IMPORTED_LOCATION will point to the namespaced library file because

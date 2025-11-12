@@ -500,6 +500,44 @@ fn patch_ggml_config_cmake(cmake_build_dir: &PathBuf, install_prefix: &PathBuf, 
         // Replace library names with namespaced versions
         let mut patched = content.clone();
         
+        // CRITICAL FIX: Deduplicate GGML_AVAILABLE_BACKENDS list
+        // CMake sometimes generates duplicate backends, causing duplicate add_library calls
+        if let Some(start) = patched.find("set(GGML_AVAILABLE_BACKENDS \"") {
+            if let Some(end) = patched[start..].find("\")").map(|i| start + i) {
+                let backends_line_start = start;
+                let backends_line_end = end + 2; // Include ")"
+                let backends_line = &patched[backends_line_start..backends_line_end];
+                
+                // Extract the list part
+                if let Some(list_start) = backends_line.find("\"") {
+                    if let Some(list_end) = backends_line[list_start+1..].find("\"").map(|i| list_start + 1 + i) {
+                        let list = &backends_line[list_start+1..list_end];
+                        
+                        // Deduplicate backends
+                        let backends: Vec<&str> = list.split(';').collect();
+                        let mut seen = std::collections::HashSet::new();
+                        let mut deduped = Vec::new();
+                        for backend in backends {
+                            if !backend.is_empty() && seen.insert(backend) {
+                                deduped.push(backend);
+                            }
+                        }
+                        
+                        let new_list = deduped.join(";");
+                        let new_line = format!("set(GGML_AVAILABLE_BACKENDS \"{}\")", new_list);
+                        
+                        if list != new_list {
+                            eprintln!("cargo:warning=[PATCH] Deduplicating GGML_AVAILABLE_BACKENDS:");
+                            eprintln!("cargo:warning=[PATCH]   Old: {}", list);
+                            eprintln!("cargo:warning=[PATCH]   New: {}", new_list);
+                            
+                            patched.replace_range(backends_line_start..backends_line_end, &new_line);
+                        }
+                    }
+                }
+            }
+        }
+        
         // Replace main library: find_library(GGML_LIBRARY ggml -> find_library(GGML_LIBRARY ggml_llama
         patched = patched.replace(
             &format!("find_library(GGML_LIBRARY ggml\n"),
